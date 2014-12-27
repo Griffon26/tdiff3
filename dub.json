@@ -1,0 +1,11 @@
+{
+	"name": "tdiff3",
+	"description": "A text-mode 3-way diff/merge tool.",
+	"copyright": "Copyright © 2014, griffon26",
+	"authors": ["griffon26"],
+	"dependencies": {
+        "d-unit": ">=0.7.1"
+	},
+	"configurations": [
+	]
+}
