@@ -9,11 +9,10 @@ import std.stdio;
 import std.string;
 import std.traits;
 
-import dunit;
-
 import common;
 import fifowriter;
 import ilineprovider;
+import myassert;
 
 
 const uint MAX_NR_OF_FILES = 3;
@@ -124,7 +123,7 @@ class GnuDiff
 
             Diff d = Diff(0, 0, 0);
             d.nofEquals = leftFrom - currentLine1;
-            assertEquals(d.nofEquals, rightFrom - currentLine2);
+            assertEqual(d.nofEquals, rightFrom - currentLine2);
             d.diff1 = leftCount;
             d.diff2 = rightCount;
             currentLine1 += d.nofEquals + d.diff1;
@@ -135,7 +134,7 @@ class GnuDiff
 
         int remainingLines1 = size1 - currentLine1;
         int remainingLines2 = size2 - currentLine2;
-        assertEquals(remainingLines1, remainingLines2);
+        assertEqual(remainingLines1, remainingLines2);
         diffList.insertBack(Diff(remainingLines1, 0, 0));
 
         verifyDiffList(diffList, size1, size2);
@@ -148,10 +147,10 @@ class GnuDiff
         DiffList dl;
         
         dl = gnudiff_2_difflist("", 3, 3);
-        assertEquals(array(dl[]), [Diff(3, 0, 0)]);
+        assertEqual(array(dl[]), [Diff(3, 0, 0)]);
 
         dl = gnudiff_2_difflist("8,11d7", 15, 11);
-        assertEquals(array(dl[]), [Diff(7, 4, 0),
+        assertEqual(array(dl[]), [Diff(7, 4, 0),
                                    Diff(4, 0, 0)]);
     }
 
@@ -166,8 +165,8 @@ class GnuDiff
             l2 += entry.nofEquals + entry.diff2;
         }
 
-        assertEquals(l1, size1);
-        assertEquals(l2, size2);
+        assertEqual(l1, size1);
+        assertEqual(l2, size2);
     }
 
 

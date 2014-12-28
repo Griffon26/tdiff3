@@ -20,9 +20,9 @@ void main()
     const int count = 3;
 
     shared(SimpleFileLineProvider) lps[count];
-    lps[0] = new shared SimpleFileLineProvider("testdata/test.txt");
-    lps[1] = new shared SimpleFileLineProvider("testdata/test.txt");
-    lps[2] = new shared SimpleFileLineProvider("testdata/test.txt");
+    lps[0] = new shared SimpleFileLineProvider("/home/griffon26/test/d/testdata/test.txt");
+    lps[1] = new shared SimpleFileLineProvider("/home/griffon26/test/d/testdata/test.txt");
+    lps[2] = new shared SimpleFileLineProvider("/home/griffon26/test/d/testdata/test.txt");
 
     GnuDiff gnuDiff = new GnuDiff("/tmp");
     gnuDiff.setFile(0, lps[0]);
@@ -44,6 +44,9 @@ void main()
     auto diffList13 = gnuDiff.runDiff(0, 2, 0, -1, 0, -1);
 
     auto diff3LineList = diff.calcDiff3LineList(diffList12, diffList23, diffList13);
+    validateDiff3LineListForN(diff3LineList, 0, 0, lps[0].getLastLineNumber());
+    validateDiff3LineListForN(diff3LineList, 1, 0, lps[1].getLastLineNumber());
+    validateDiff3LineListForN(diff3LineList, 2, 0, lps[2].getLastLineNumber());
 
     writefln("Cleaning up");
 

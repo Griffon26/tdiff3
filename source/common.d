@@ -26,6 +26,36 @@ struct Diff3Line
     bool bAEqB = false;
     bool bAEqC = false;
     bool bBEqC = false;
+
+    ref int line(int i)
+    {
+        switch(i)
+        {
+        case 0:
+            return lineA;
+        case 1:
+            return lineB;
+        case 2:
+            return lineC;
+        default:
+            assert(false);
+        }
+    }
+
+    ref bool equal(int i)
+    {
+        switch(i)
+        {
+        case 0:
+            return bAEqB;
+        case 1:
+            return bAEqC;
+        case 2:
+            return bBEqC;
+        default:
+            assert(false);
+        }
+    }
 }
 
 alias Diff3LineList = DList!Diff3Line;

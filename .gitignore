@@ -1,5 +1,7 @@
 .dub
 docs.json
 __dummy.html
+__test__library__
+tdiff3
 *.o
 *.obj
