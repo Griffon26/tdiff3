@@ -7,5 +7,7 @@
         "d-unit": ">=0.7.1"
 	},
 	"configurations": [
-	]
+	],
+    "importPaths": [ "/home/griffon26/git/ycurses/modules" ],
+    "libs": [ "ncursesw" ]
 }

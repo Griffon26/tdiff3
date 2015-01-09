@@ -3,6 +3,7 @@ import std.stdio;
 import std.typecons;
 
 import common;
+import ilineprovider;
 import myassert;
 
 void validateDiff3LineListForN(Diff3LineList diff3LineList, int n, int leftLine, int rightLine)
@@ -28,7 +29,6 @@ private void updateDiff3LineListUsingAB(DiffList diffList12, ref Diff3LineList d
     {
         while(d.nofEquals > 0)
         {
-            writeln("case equals");
             Diff3Line d3l = Diff3Line.init;
             d3l.bAEqB = true;
             d3l.lineA = lineA++;
@@ -38,7 +38,6 @@ private void updateDiff3LineListUsingAB(DiffList diffList12, ref Diff3LineList d
         }
         while(d.diff1 > 0 && d.diff2 > 0)
         {
-            writeln("case both diff");
             Diff3Line d3l = Diff3Line.init;
             d3l.lineA = lineA++;
             d3l.lineB = lineB++;
@@ -48,7 +47,6 @@ private void updateDiff3LineListUsingAB(DiffList diffList12, ref Diff3LineList d
         }
         while(d.diff1 > 0)
         {
-            writeln("case diff1");
             Diff3Line d3l = Diff3Line.init;
             d3l.lineA = lineA++;
             diff3LineList.insertBack(d3l);
@@ -56,13 +54,20 @@ private void updateDiff3LineListUsingAB(DiffList diffList12, ref Diff3LineList d
         }
         while(d.diff2 > 0)
         {
-            writeln("case diff2");
             Diff3Line d3l = Diff3Line.init;
             d3l.lineB = lineB++;
             diff3LineList.insertBack(d3l);
             d.diff2--;
         }
     }
+
+    /* Post condition:
+     * - Diff3Line entries only have lineA/lineB set
+     * - per Diff in the difflist:
+     *   First equal lines in A and B come side by side
+     *   then differing lines in A and B come side by side
+     *   then the remaining lines in either A or B
+     */
 }
 
 private Tuple!(bool, bool, bool, int, int, int) toTuple(Diff3Line d3l)
@@ -219,6 +224,21 @@ private void updateDiff3LineListUsingAC(DiffList diffList13, ref Diff3LineList d
             lineC++;
         }
     }
+
+    /* Post condition:
+     * - per Diff in the difflist:
+     *   - First equal lines from C added next to their counterpart in A
+     *   - then differing lines from C are inserted immediately after the above
+     *
+     *  A Be Ce
+     *  A Be Ce
+     *       Cd
+     *       Cd
+     *  A Be
+     *  A Bd
+     *    Bd
+     *
+     */
 }
 
 unittest
@@ -315,8 +335,6 @@ private void moveLowerLineUp(Diff3LineList diff3LineList,
                              Diff3LineList.Range r3b,
                              Diff3LineList.Range r3c)
 {
-    assertEqual(r3b.front.lineB, r3c.front.lineC);
-
     // Is it possible to move this line up?
     // Test if no other B's are used between r3c and r3b
 
@@ -590,6 +608,7 @@ unittest
 
 private void updateDiff3LineListUsingBC(DiffList diffList23, ref Diff3LineList diff3LineList)
 {
+
     int lineB = 0;
     int lineC = 0;
 
@@ -628,30 +647,23 @@ private void updateDiff3LineListUsingBC(DiffList diffList23, ref Diff3LineList d
             r3b.popFront();
             r3c.popFront();
         }
-        while(d.diff1 > 0)
+        if(d.diff1 > 0)
         {
-            auto r3 = r3b;
-            while(r3.front.lineB != lineB)
-                r3.popFront();
-            if(r3 != r3b && !r3.front.bAEqB)
+            auto r3to = r3b;
+            auto r3from = r3b;
+            while(r3from.front.lineB != lineB)
             {
-                Diff3Line d3l;
-                d3l.lineB = lineB;
-                diff3LineList.insertBefore(r3b, d3l);
-                r3.front.lineB = -1;
+                assert(r3from.front.lineB == -1);
+                r3from.popFront();
             }
-            else
+            while(!r3from.empty() && r3to != r3from && !r3from.front.bAEqB && d.diff1 > 0)
             {
-                r3b = r3;
-            }
-            d.diff1--;
-            lineB++;
-            r3b.popFront();
-
-            if(d.diff2 > 0)
-            {
-                d.diff2--;
-                lineC++;
+                r3to.front.lineB = r3from.front.lineB;
+                r3from.front.lineB = -1;
+                r3to.popFront();
+                r3from.popFront();
+                lineB++;
+                d.diff1--;
             }
         }
         while(d.diff2 > 0)
@@ -665,21 +677,139 @@ private void updateDiff3LineListUsingBC(DiffList diffList23, ref Diff3LineList d
 unittest
 {
     /* Test for while(d.diff1 > 0)
-     * Check  
-    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false, -1, -1, -1),
-                                          tuple(false, false, false,  0,  0, -1)
+     * Check that nothing is done if lineB is already at the beginning */
+    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false,  4,  0, -1),
+                                          tuple(false, false, false,  5,  1, -1)
                                           ]);
-    DiffList dl = [Diff(0,1,1),
-                   Diff(1,0,0)];
+    DiffList dl = [Diff(0,2,0)];
 
-    updateDiff3LineListUsingAC(dl, d3ll);
+    updateDiff3LineListUsingBC(dl, d3ll);
 
     auto d3ltuples = d3ll.toTuples;
-    assertEqual(d3ltuples[0], tuple(false, false, false, -1, -1,  0));
-    assertEqual(d3ltuples[1], tuple(false, false, false,  0,  0, -1));
-    assertEqual(d3ltuples[2], tuple(false, true,  false,  1,  1,  1));
+    assertEqual(d3ltuples[0], tuple(false, false, false,  4,  0, -1));
+    assertEqual(d3ltuples[1], tuple(false, false, false,  5,  1, -1));
+    assertEqual(d3ltuples.length, 2);
+}
+
+unittest
+{
+    /* Test for while(d.diff1 > 0)
+     * Check that B is moved up if it is not at the beginning */
+    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false,  4, -1,  7),
+                                          tuple(false, false, false,  5,  0,  8),
+                                          tuple(false, false, false,  6,  1,  9)
+                                          ]);
+    DiffList dl = [Diff(0,2,0)];
+
+    updateDiff3LineListUsingBC(dl, d3ll);
+
+    auto d3ltuples = d3ll.toTuples;
+    assertEqual(d3ltuples[0], tuple(false, false, false,  4,  0,  7));
+    assertEqual(d3ltuples[1], tuple(false, false, false,  5,  1,  8));
+    assertEqual(d3ltuples[2], tuple(false, false, false,  6, -1,  9));
     assertEqual(d3ltuples.length, 3);
-    */
+}
+
+version(old)
+{
+unittest
+{
+    /* Test for while(d.diff1 > 0)
+     * Check that B (line 2) is moved up enough to make room for an equal C (line 0) */
+    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false,  4, -1,  0),
+                                          tuple(false, false, false,  5,  0,  1),
+                                          tuple(false, false, false,  6,  1,  2),
+                                          tuple(false, false, false,  7,  2,  3)
+                                          ]);
+    DiffList dl = [Diff(0,2,0)];
+
+    updateDiff3LineListUsingBC(dl, d3ll);
+
+    auto d3ltuples = d3ll.toTuples;
+    assertEqual(d3ltuples[0], tuple(false, false, false, -1,  0, -1));
+    assertEqual(d3ltuples[1], tuple(false, false, false,  4, -1,  0));
+    assertEqual(d3ltuples[2], tuple(false, false, false, -1,  1, -1));
+    assertEqual(d3ltuples[3], tuple(false, false, false,  5, -1,  1));
+    assertEqual(d3ltuples[4], tuple(false, false, false,  6, -1,  2));
+    assertEqual(d3ltuples[5], tuple(false, false, false,  7,  2,  3));
+    assertEqual(d3ltuples.length, 6);
+}
+}
+else
+{
+unittest
+{
+    /* Test for while(d.diff1 > 0)
+     * Check that B (line 2) is moved up enough to make room for an equal C (line 0) */
+    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false,  4, -1,  0),
+                                          tuple(false, false, false,  5,  0,  1),
+                                          tuple(false, false, false,  6,  1,  2),
+                                          tuple(false, false, false,  7,  2,  3)
+                                          ]);
+    DiffList dl = [Diff(0,2,0)];
+
+    updateDiff3LineListUsingBC(dl, d3ll);
+
+    auto d3ltuples = d3ll.toTuples;
+    assertEqual(d3ltuples[0], tuple(false, false, false,  4,  0,  0));
+    assertEqual(d3ltuples[1], tuple(false, false, false,  5,  1,  1));
+    assertEqual(d3ltuples[2], tuple(false, false, false,  6, -1,  2));
+    assertEqual(d3ltuples[3], tuple(false, false, false,  7,  2,  3));
+    assertEqual(d3ltuples.length, 4);
+}
+}
+
+version(old){
+unittest
+{
+    /* Test for while(d.diff1 > 0)
+     * Check that B (line 2) is moved up enough to make room for an equal C (line 0) */
+    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false,  4, -1,  0),
+                                          tuple(false, false, false,  5,  0,  1),
+                                          tuple(false, false, false,  6,  1,  2),
+                                          tuple(false, false, false,  7,  2,  3)
+                                          ]);
+    DiffList dl = [Diff(0,2,0),
+                   Diff(1,0,0)];
+
+    updateDiff3LineListUsingBC(dl, d3ll);
+
+    auto d3ltuples = d3ll.toTuples;
+    assertEqual(d3ltuples[0], tuple(false, false, false, -1,  0, -1));
+    assertEqual(d3ltuples[1], tuple(false, false, false, -1,  1, -1));
+    assertEqual(d3ltuples[2], tuple(false, false, true,   4,  2,  0));
+    assertEqual(d3ltuples[3], tuple(false, false, false, -1, -1, -1));
+    assertEqual(d3ltuples[4], tuple(false, false, false,  5, -1,  1));
+    assertEqual(d3ltuples[5], tuple(false, false, false,  6, -1,  2));
+    assertEqual(d3ltuples[6], tuple(false, false, false,  7, -1,  3));
+    assertEqual(d3ltuples.length, 7);
+}
+}
+else
+{
+unittest
+{
+    /* Test for while(d.diff1 > 0)
+     * Check that B (line 2) is moved up enough to make room for an equal C (line 0) */
+    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false,  4, -1,  0),
+                                          tuple(false, false, false,  5,  0,  1),
+                                          tuple(false, false, false,  6,  1,  2),
+                                          tuple(false, false, false,  7,  2,  3)
+                                          ]);
+    DiffList dl = [Diff(0,2,0),
+                   Diff(1,0,0)];
+
+    updateDiff3LineListUsingBC(dl, d3ll);
+
+    auto d3ltuples = d3ll.toTuples;
+    assertEqual(d3ltuples[0], tuple(false, false, false, -1,  0, -1));
+    assertEqual(d3ltuples[1], tuple(false, false, false, -1,  1, -1));
+    assertEqual(d3ltuples[2], tuple(false, false, true,   4,  2,  0));
+    assertEqual(d3ltuples[3], tuple(false, false, false,  5, -1,  1));
+    assertEqual(d3ltuples[4], tuple(false, false, false,  6, -1,  2));
+    assertEqual(d3ltuples[5], tuple(false, false, false,  7, -1,  3));
+    assertEqual(d3ltuples.length, 6);
+}
 }
 
 Diff3LineList calcDiff3LineList(DiffList diffList12, DiffList diffList13, DiffList diffList23)
@@ -693,4 +823,237 @@ Diff3LineList calcDiff3LineList(DiffList diffList12, DiffList diffList13, DiffLi
     return diff3LineList;
 }
 
+void trimDiff3LineList(ref Diff3LineList d3ll,
+                       shared ILineProvider lpA,
+                       shared ILineProvider lpB,
+                       shared ILineProvider lpC)
+{
+    auto r3 = d3ll[];
+    auto r3a = d3ll[];
+    auto r3b = d3ll[];
+    auto r3c = d3ll[];
+
+    int line = 0;
+    int lineA = 0;
+    int lineB = 0;
+    int lineC = 0;
+
+    for(; !r3.empty(); r3.popFront(), line++)
+    {
+        if( line > lineA && r3.front.lineA != -1 && r3a.front.lineB != -1 && r3a.front.bBEqC &&
+            lpA.get(r3.front.lineA) == lpB.get(r3a.front.lineB) )
+        {
+            r3a.front.lineA = r3.front.lineA;
+            r3a.front.bAEqB = true;
+            r3a.front.bAEqC = true;
+
+            r3.front.lineA = -1;
+            r3.front.bAEqB = false;
+            r3.front.bAEqC = false;
+
+            r3a.popFront();
+            lineA++;
+        }
+
+        if( line > lineB && r3.front.lineB != -1 && r3b.front.lineA != -1 && r3b.front.bAEqC &&
+            lpB.get(r3.front.lineB) == lpA.get(r3b.front.lineA) )
+        {
+            r3b.front.lineB = r3.front.lineB;
+            r3b.front.bAEqB = true;
+            r3b.front.bBEqC = true;
+
+            r3.front.lineB = -1;
+            r3.front.bAEqB = false;
+            r3.front.bBEqC = false;
+
+            r3b.popFront();
+            lineB++;
+        }
+
+        if( line > lineC && r3.front.lineC != -1 && r3c.front.lineA != -1 && r3c.front.bAEqB &&
+            lpC.get(r3.front.lineC) == lpA.get(r3c.front.lineA) )
+        {
+            r3c.front.lineC = r3.front.lineC;
+            r3c.front.bAEqC = true;
+            r3c.front.bBEqC = true;
+
+            r3.front.lineC = -1;
+            r3.front.bAEqC = false;
+            r3.front.bBEqC = false;
+
+            r3c.popFront();
+            lineC++;
+        }
+                
+        if( line > lineA && r3.front.lineA != -1 && !r3.front.bAEqB && !r3.front.bAEqC )
+        {
+            r3a.front.lineA = r3.front.lineA;
+            r3.front.lineA = -1;
+
+            if(r3a.front.lineB != -1 && lpA.get(r3a.front.lineA) == lpB.get(r3a.front.lineB))
+            {
+                r3a.front.bAEqB = true;
+            }
+            if((r3a.front.bAEqB && r3a.front.bBEqC) ||
+               (r3a.front.lineC != -1 && lpA.get(r3a.front.lineA) == lpC.get(r3a.front.lineC)))
+            {
+                r3a.front.bAEqC = true;
+            }
+
+            r3a.popFront();
+            lineA++;
+        }
+
+        if( line > lineB && r3.front.lineB != -1 && !r3.front.bAEqB && !r3.front.bBEqC )
+        {
+            r3b.front.lineB = r3.front.lineB;
+            r3.front.lineB = -1;
+
+            if(r3b.front.lineA != -1 && lpA.get(r3b.front.lineA) == lpB.get(r3b.front.lineB))
+            {
+                r3b.front.bAEqB = true;
+            }
+            if((r3b.front.bAEqB && r3b.front.bAEqC) ||
+               (r3b.front.lineC != -1 && lpB.get(r3b.front.lineB) == lpC.get(r3b.front.lineC)))
+            {
+                r3b.front.bBEqC = true;
+            }
+
+            r3b.popFront();
+            lineB++;
+        }
+
+        if( line > lineC && r3.front.lineC != -1 && r3.front.bAEqC && r3.front.bBEqC )
+        {
+            r3c.front.lineC = r3.front.lineC;
+            r3.front.lineC = -1;
+
+            if(r3c.front.lineA != -1 && lpA.get(r3c.front.lineA) == lpC.get(r3c.front.lineC))
+            {
+                r3c.front.bAEqC = true;
+            }
+            if((r3c.front.bAEqC && r3c.front.bAEqB) ||
+               (r3c.front.lineB != -1 && lpB.get(r3c.front.lineB) == lpC.get(r3c.front.lineC)))
+            {
+                r3c.front.bBEqC = true;
+            }
+
+            r3c.popFront();
+            lineC++;
+        }
+
+        if( line > lineA && line > lineB && r3.front.lineA != -1 &&
+            r3.front.bAEqB && !r3.front.bAEqC )
+        {
+            /* if A and B are equal and not equal to C, then move them up to the first position where both A and B are -1 */
+
+            auto r = (lineA > lineB) ? r3a : r3b;
+            int  l = (lineA > lineB) ? lineA : lineB;
+
+            {
+                r.front.lineA = r3.front.lineA;
+                r.front.lineB = r3.front.lineB;
+                r.front.bAEqB = true;
+
+                if(r.front.lineC != -1 && lpA.get(r.front.lineA) == lpC.get(r.front.lineC))
+                {
+                    r.front.bAEqC = true;
+                    r.front.bBEqC = true;
+                }
+
+                r3.front.lineA = -1;
+                r3.front.lineB = -1;
+                r3.front.bAEqB = false;
+                r3a = r;
+                r3b = r;
+                r3a.popFront();
+                r3b.popFront();
+
+                lineA = l + 1;
+                lineB = l + 1;
+            }
+        }
+        else if( line > lineA && line > lineC && r3.front.lineA != -1 && 
+                 r3.front.bAEqC && !r3.front.bAEqB)
+        {
+            /* if A and C are equal and not equal to B, then move them up to the first position where both A and C are -1 */
+
+            auto r = (lineA > lineC) ? r3a : r3c;
+            int  l = (lineA > lineC) ? lineA : lineC;
+
+            {
+                r.front.lineA = r3.front.lineA;
+                r.front.lineC = r3.front.lineC;
+                r.front.bAEqC = true;
+
+                if(r.front.lineB != -1 && lpA.get(r.front.lineA) == lpB.get(r.front.lineB))
+                {
+                    r.front.bAEqB = true;
+                    r.front.bBEqC = true;
+                }
+
+                r3.front.lineA = -1;
+                r3.front.lineC = -1;
+                r3.front.bAEqC = false;
+                r3a = r;
+                r3c = r;
+                r3a.popFront();
+                r3c.popFront();
+
+                lineA = l + 1;
+                lineC = l + 1;
+            }
+        }
+        else if( line > lineB && line > lineC && r3.front.lineB != -1 && 
+                 r3.front.bBEqC && !r3.front.bAEqC)
+        {
+            /* if B and C are equal and not equal to A, then move them up to the first position where both B and C are -1 */
+
+            auto r = (lineB > lineC) ? r3b : r3c;
+            int  l = (lineB > lineC) ? lineB : lineC;
+
+            {
+                r.front.lineB = r3.front.lineB;
+                r.front.lineC = r3.front.lineC;
+                r.front.bBEqC = true;
+
+                if(r.front.lineA != -1 && lpA.get(r.front.lineA) == lpB.get(r.front.lineB))
+                {
+                    r.front.bAEqB = true;
+                    r.front.bAEqC = true;
+                }
+
+                r3.front.lineB = -1;
+                r3.front.lineC = -1;
+                r3.front.bBEqC = false;
+                r3b = r;
+                r3c = r;
+                r3b.popFront();
+                r3c.popFront();
+
+                lineB = l + 1;
+                lineC = l + 1;
+            }
+        }
+
+        if(r3.front.lineA != -1)
+        {
+            lineA = line + 1;
+            r3a = r3;
+            r3a.popFront();
+        }
+        if(r3.front.lineB != -1)
+        {
+            lineB = line + 1;
+            r3b = r3;
+            r3b.popFront();
+        }
+        if(r3.front.lineC != -1)
+        {
+            lineC = line + 1;
+            r3c = r3;
+            r3c.popFront();
+        }
+    }
+}
 
