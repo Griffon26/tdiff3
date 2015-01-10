@@ -1,3 +1,24 @@
+/*
+ * tdiff3 - a text-based 3-way diff/merge tool that can handle large files
+ * Copyright (C) 2014  Maurice van der Pot <griffon26@kfk4ever.com>
+ *
+ * This file is part of tdiff3.
+ *
+ * tdiff3 is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * tdiff3 is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with tdiff3; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 import core.thread;
 import std.array;
 import std.c.locale;
@@ -109,6 +130,9 @@ void main()
 
     setlocale(LC_ALL, "");
     initscr();          //Start curses mode
+    cbreak();
+    noecho();
+    refresh();
 
     int line_offset = 0;
 
@@ -117,13 +141,16 @@ void main()
     auto left_win = newwin(ysize, xsize, 1, 0);
     scrollok(left_win, true);
     box(left_win, 0 , 0);
-    for(int y = 0; y < ysize - 1; y++)
+    wrefresh(left_win);
+
+    wmove(left_win, 0, 0);
+    for(int y = 0; y < ysize; y++)
     {
         wprintw(left_win, toStringz(lps[0].get(line_offset + y)));
     }
     wrefresh(left_win);
 
-    auto right_win = newwin((LINES - 1), COLS / 2, 1, COLS / 2);
+    auto right_win = newwin((LINES - 1), 20, 1, xsize + 1);
     scrollok(right_win, true);
     box(right_win, 0 , 0);
     wrefresh(right_win);
@@ -137,18 +164,25 @@ void main()
         {
         case 'j':
             line_offset++; 
+            wmove(left_win, ysize - 1, 0);
             wprintw(left_win, toStringz(lps[0].get(line_offset + ysize - 1)));
-            wrefresh(left_win);
+            wprintw(right_win, toStringz(format("moving down to line offset %d\n", line_offset)));
             break;
         case 'i':
-            line_offset--;
-            wscrl(left_win, -1);
-            wprintw(left_win, toStringz(lps[0].get(line_offset)));
-            wrefresh(left_win);
+            if(line_offset > 0)
+            {
+                line_offset--;
+                wscrl(left_win, -1);
+                wmove(left_win, 0, 0);
+                wprintw(left_win, toStringz(lps[0].get(line_offset)));
+            }
+            wprintw(right_win, toStringz(format("moving up to line offset %d\n", line_offset)));
             break;
         default:
             break;
         }
+        wrefresh(left_win);
+        wrefresh(right_win);
     }
     endwin();
 }
