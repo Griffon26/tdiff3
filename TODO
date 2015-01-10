@@ -1,0 +1,25 @@
+Already implemented:
+- kdiff3's comparison algorithm (except for fineDiff)
+
+I plan to follow the following list from top to bottom for implementing new
+functionality. 
+
+- implement ncurses ui
+  - implement a sub-window that shows a file's content + scrolling up and down one line at a time
+  - add line numbers to sub-window
+  - diff view of three files. The only thing you can do is scroll up and down one line at a time.
+  - add scrollbar (read-only, just to show where you are in the file)
+  - also support just 2 files
+  - implement resizing when the terminal is resized
+- implement merging (without manual editing at first)
+- implement manual editing of the merge result
+  - add configuration file and settings dialog
+    - kdiff3's settings: tab inserts spaces, tab size, auto indentation
+- implement kdiff3's finediff
+- implement mmap for input file reading
+- implement decoding filter for non-utf8 input files
+
+The following features will follow when requested
+- implement line preprocessing filter for input files
+- (if it helps performance) implement a decoded/preprocessed line cache filter for input files
+

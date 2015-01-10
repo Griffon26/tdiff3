@@ -31,7 +31,7 @@ synchronized class SimpleFileLineProvider: ILineProvider
 {
     private string content;
     private string[] lines;
-    private uint lastpos;
+    private int lastpos;
     private static immutable uint readahead = 100;
 
     this(string filename)
@@ -41,7 +41,7 @@ synchronized class SimpleFileLineProvider: ILineProvider
         ensure_line_is_available(0);
     }
 
-    private void ensure_line_is_available(uint index)
+    private void ensure_line_is_available(int index)
     {
         /* index already accessible */
         if(index < lines.length)
@@ -57,14 +57,14 @@ synchronized class SimpleFileLineProvider: ILineProvider
 
         //writeln("ensure ", index);
 
-        auto prevlength = lines.length;
+        int prevlength = to!int(lines.length);
         lines.length = index + readahead + 1;
 
-        uint i;
+        int i;
         for(i = prevlength; i < lines.length; i++)
         {
             //writeln("generating line ", i, " from lastpos ", lastpos, " while content.length is ", content.length);
-            auto eol_offset = std.string.indexOf(content[lastpos .. $], '\n');
+            int eol_offset = to!int(std.string.indexOf(content[lastpos .. $], '\n'));
             if (eol_offset != -1)
             {
                 auto endpos = lastpos + eol_offset + 1;
@@ -76,7 +76,7 @@ synchronized class SimpleFileLineProvider: ILineProvider
             {
                 lines[i] = content[lastpos .. $];
                 //writefln("    new line content is %s", lines[i]);
-                lastpos = content.length;
+                lastpos = to!int(content.length);
                 break;
             }
         }
@@ -92,7 +92,7 @@ synchronized class SimpleFileLineProvider: ILineProvider
     {
         assert(lastpos == content.length);
 
-        return lines.length - 1;
+        return to!int(lines.length - 1);
     }
 
     Nullable!string get(uint i)
