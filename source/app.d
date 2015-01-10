@@ -79,9 +79,9 @@ void main()
     const int count = 3;
 
     shared(SimpleFileLineProvider) lps[count];
-    lps[0] = new shared SimpleFileLineProvider("/home/griffon26/UTF-8-demo.txt");
-    lps[1] = new shared SimpleFileLineProvider("/home/griffon26/git/kdiff3/kdiff3/src-QT4/dummy_short.txt");
-    lps[2] = new shared SimpleFileLineProvider("/home/griffon26/git/kdiff3/kdiff3/src-QT4/test_short.txt");
+    lps[0] = new shared SimpleFileLineProvider("UTF-8-demo.txt");
+    lps[1] = new shared SimpleFileLineProvider("dummy_short.txt");
+    lps[2] = new shared SimpleFileLineProvider("test_short.txt");
 
     GnuDiff gnuDiff = new GnuDiff("/tmp");
     gnuDiff.setFile(0, lps[0]);
