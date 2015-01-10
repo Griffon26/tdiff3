@@ -8,6 +8,6 @@
 	},
 	"configurations": [
 	],
-    "importPaths": [ "/home/griffon26/git/ycurses/modules" ],
+    "importPaths": [ "../ycurses/modules" ],
     "libs": [ "ncursesw" ]
 }
