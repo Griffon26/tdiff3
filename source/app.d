@@ -131,7 +131,7 @@ void main()
     writefln("Exiting main");
 
     setlocale(LC_ALL, "");
-    initscr();          //Start curses mode
+    initscr();
     cbreak();
     noecho();
     refresh();
@@ -149,7 +149,7 @@ void main()
     int pad_ysize = ysize - 2;
 
 
-    auto inputPane = new InputPane(win_start_x, win_start_y, xsize, ysize, 0, lps[0].getLastLineNumber() + 1);
+    auto inputPane = new InputPane(win_start_x, win_start_y, xsize, ysize, 110, lps[0].getLastLineNumber() + 1);
     auto missingLineTuple = inputPane.beginMissingLineUpdate();
 
     for(int y = missingLineTuple[0]; y < missingLineTuple[0] + missingLineTuple[1]; y++)
@@ -166,7 +166,7 @@ void main()
 
     auto right_pad = newpad(LINES - 3, xsize - 2);
     scrollok(right_pad, true);
-    wprintw(right_pad, toStringz(format("pad ysize is %d\n", pad_ysize)));
+    wprintw(right_pad, toStringz(format("viewwidth is %d\n", xsize - 2)));
     prefresh(right_pad, 0, 0, 2, xsize + 2, LINES - 2, COLS - 2);
 
     int ch = 'x';
@@ -181,6 +181,14 @@ void main()
             break;
         case 'i':
             inputPane.scrollY(-1);
+            break;
+        case 'k':
+            wprintw(right_pad, "scrolling left\n");
+            inputPane.scrollX(-1);
+            break;
+        case 'l':
+            wprintw(right_pad, "scrolling right\n");
+            inputPane.scrollX(1);
             break;
         default:
             break;
