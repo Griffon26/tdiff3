@@ -78,6 +78,8 @@ void printDiff3List(Diff3LineList d3ll,
 
 void main()
 {
+    setlocale(LC_ALL, "");
+
     const int count = 3;
 
     shared(SimpleFileLineProvider) lps[count];
@@ -122,15 +124,14 @@ void main()
     /* TODO: finediff */
 
     writefln("print");
-    printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
+    //printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
 
     writefln("Cleaning up");
 
     gnuDiff.cleanup();
 
-    writefln("Exiting main");
+    //Thread.sleep(dur!("seconds")(50));
 
-    setlocale(LC_ALL, "");
     initscr();
     cbreak();
     noecho();
@@ -149,7 +150,7 @@ void main()
     int pad_ysize = ysize - 2;
 
 
-    auto inputPane = new InputPane(win_start_x, win_start_y, xsize, ysize, 110, lps[0].getLastLineNumber() + 1);
+    auto inputPane = new InputPane(win_start_x, win_start_y, xsize, ysize, lps[0].getMaxWidth() + 1, lps[0].getLastLineNumber() + 1);
     auto missingLineTuple = inputPane.beginMissingLineUpdate();
 
     for(int y = missingLineTuple[0]; y < missingLineTuple[0] + missingLineTuple[1]; y++)
@@ -166,7 +167,7 @@ void main()
 
     auto right_pad = newpad(LINES - 3, xsize - 2);
     scrollok(right_pad, true);
-    wprintw(right_pad, toStringz(format("viewwidth is %d\n", xsize - 2)));
+    wprintw(right_pad, toStringz(format("maxwidth is %d\n", lps[0].getMaxWidth())));
     prefresh(right_pad, 0, 0, 2, xsize + 2, LINES - 2, COLS - 2);
 
     int ch = 'x';

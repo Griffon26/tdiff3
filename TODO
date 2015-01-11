@@ -1,12 +1,13 @@
 Already implemented:
 - kdiff3's comparison algorithm (except for fineDiff)
-- implement a sub-window that shows a file's content + scrolling up and down one line at a time (press i or j)
+- implement a sub-window that shows a file's content + 
+    scrolling up and down one line at a time (press i or j) or
+    scrolling sideways one column at a time (press k or l)
 
 I plan to follow the following list from top to bottom for implementing new
 functionality. 
 
 - implement ncurses ui
-  - horizontal scrolling within a sub-window
   - add line numbers to sub-window
   - diff view of three files. The only thing you can do is scroll up and down one line at a time.
   - add scrollbar (read-only, just to show where you are in the file)

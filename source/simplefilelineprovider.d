@@ -19,13 +19,38 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+import std.algorithm;
 import std.array;
+import std.c.stddef;
 import std.conv;
 import std.file;
 import std.stdio;
 import std.typecons;
+import std.utf;
 
 import ilineprovider;
+
+extern (C) int wcwidth(wchar_t c);
+
+int getLengthInColumns(string s)
+{
+    int nrOfColumns = 0;
+
+    validate(s);
+
+
+    foreach(dchar c; byDchar(s))
+    {
+        int width = wcwidth(c);
+        if(width != -1)
+        {
+            nrOfColumns += width;
+        }
+    }
+
+    return nrOfColumns;
+}
+
 
 synchronized class SimpleFileLineProvider: ILineProvider
 {
@@ -33,6 +58,7 @@ synchronized class SimpleFileLineProvider: ILineProvider
     private string[] lines;
     private int lastpos;
     private static immutable uint readahead = 100;
+    private int m_maxWidth;
 
     this(string filename)
     {
@@ -79,6 +105,7 @@ synchronized class SimpleFileLineProvider: ILineProvider
                 lastpos = to!int(content.length);
                 break;
             }
+            m_maxWidth = max(m_maxWidth, getLengthInColumns(lines[i]));
         }
 
         /* line storage shouldn't be larger than the number of lines in the content */
@@ -93,6 +120,11 @@ synchronized class SimpleFileLineProvider: ILineProvider
         assert(lastpos == content.length);
 
         return to!int(lines.length - 1);
+    }
+
+    int getMaxWidth()
+    {
+        return m_maxWidth;
     }
 
     Nullable!string get(uint i)
