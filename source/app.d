@@ -26,7 +26,7 @@ import std.container;
 import std.stdio;
 import std.string;
 
-import ncurses;
+import deimos.ncurses.curses;
 
 import common;
 import diff;
@@ -34,6 +34,7 @@ import fifowriter;
 import gnudiff;
 import ilineprovider;
 import simplefilelineprovider;
+import inputpane;
 
 void printDiff3List(Diff3LineList d3ll,
                     shared ILineProvider lpA,
@@ -72,6 +73,7 @@ void printDiff3List(Diff3LineList d3ll,
         writefln("%s %s %s", lineAText, lineBText, lineCText);
     }
 }
+
 
 
 void main()
@@ -136,53 +138,63 @@ void main()
 
     int line_offset = 0;
 
+    int win_start_x = 0;
+    int win_start_y = 1;
     int xsize = COLS / 2;
     int ysize = LINES - 1;
-    auto left_win = newwin(ysize, xsize, 1, 0);
-    scrollok(left_win, true);
-    box(left_win, 0 , 0);
-    wrefresh(left_win);
 
-    wmove(left_win, 0, 0);
-    for(int y = 0; y < ysize; y++)
+    int pad_start_x = win_start_x + 1;
+    int pad_start_y = win_start_y + 1;
+    int pad_xsize = xsize - 2;
+    int pad_ysize = ysize - 2;
+
+
+    auto inputPane = new InputPane(win_start_x, win_start_y, xsize, ysize, 0, lps[0].getLastLineNumber() + 1);
+    auto missingLineTuple = inputPane.beginMissingLineUpdate();
+
+    for(int y = missingLineTuple[0]; y < missingLineTuple[0] + missingLineTuple[1]; y++)
     {
-        wprintw(left_win, toStringz(lps[0].get(line_offset + y)));
+        inputPane.addMissingLine(y, lps[0].get(y));
     }
-    wrefresh(left_win);
+    inputPane.endMissingLineUpdate();
+    inputPane.redrawAll();
 
-    auto right_win = newwin((LINES - 1), 20, 1, xsize + 1);
-    scrollok(right_win, true);
+    auto right_win = newwin(ysize, COLS - xsize, 1, xsize);
     box(right_win, 0 , 0);
     wrefresh(right_win);
+
+
+    auto right_pad = newpad(LINES - 3, xsize - 2);
+    scrollok(right_pad, true);
+    wprintw(right_pad, toStringz(format("pad ysize is %d\n", pad_ysize)));
+    prefresh(right_pad, 0, 0, 2, xsize + 2, LINES - 2, COLS - 2);
 
     int ch = 'x';
     while(ch != 'q')
     {
         ch = getch();
-        
+
         switch(ch)
         {
         case 'j':
-            line_offset++; 
-            wmove(left_win, ysize - 1, 0);
-            wprintw(left_win, toStringz(lps[0].get(line_offset + ysize - 1)));
-            wprintw(right_win, toStringz(format("moving down to line offset %d\n", line_offset)));
+            inputPane.scrollY(1);
             break;
         case 'i':
-            if(line_offset > 0)
-            {
-                line_offset--;
-                wscrl(left_win, -1);
-                wmove(left_win, 0, 0);
-                wprintw(left_win, toStringz(lps[0].get(line_offset)));
-            }
-            wprintw(right_win, toStringz(format("moving up to line offset %d\n", line_offset)));
+            inputPane.scrollY(-1);
             break;
         default:
             break;
         }
-        wrefresh(left_win);
-        wrefresh(right_win);
+
+        missingLineTuple = inputPane.beginMissingLineUpdate();
+        for(int y = missingLineTuple[0]; y < missingLineTuple[0] + missingLineTuple[1]; y++)
+        {
+            inputPane.addMissingLine(y, lps[0].get(y));
+        }
+        inputPane.endMissingLineUpdate();
+        inputPane.redrawAll();
+
+        prefresh(right_pad, 0, 0, 2, xsize + 2, LINES - 2, COLS - 2);
     }
     endwin();
 }

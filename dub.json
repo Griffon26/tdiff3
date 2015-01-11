@@ -8,6 +8,6 @@
 	},
 	"configurations": [
 	],
-    "importPaths": [ "../ycurses/modules" ],
+    "importPaths": [ "../ncurses" ],
     "libs": [ "ncursesw" ]
 }
