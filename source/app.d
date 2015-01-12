@@ -23,6 +23,7 @@ import core.thread;
 import std.array;
 import std.c.locale;
 import std.container;
+import std.conv;
 import std.stdio;
 import std.string;
 
@@ -74,6 +75,26 @@ void printDiff3List(Diff3LineList d3ll,
     }
 }
 
+void updateInputPane(InputPane inputPane, Diff3LineArray d3la, int n, shared ILineProvider lp)
+{
+    auto missingLineTuple = inputPane.beginMissingLineUpdate();
+
+    for(int y = missingLineTuple[0]; y < missingLineTuple[0] + missingLineTuple[1]; y++)
+    {
+        string line;
+        if(d3la[y].line(n) == -1)
+        {
+            line = "\n";
+        }
+        else
+        {
+            line = lp.get(d3la[y].line(n));
+        }
+        inputPane.addMissingLine(y, line);
+    }
+    inputPane.endMissingLineUpdate();
+    inputPane.redrawAll();
+}
 
 
 void main()
@@ -84,7 +105,7 @@ void main()
 
     shared(SimpleFileLineProvider) lps[count];
     lps[0] = new shared SimpleFileLineProvider("UTF-8-demo.txt");
-    lps[1] = new shared SimpleFileLineProvider("dummy_short.txt");
+    lps[1] = new shared SimpleFileLineProvider("UTF-8-demo2.txt");
     lps[2] = new shared SimpleFileLineProvider("test_short.txt");
 
     GnuDiff gnuDiff = new GnuDiff("/tmp");
@@ -124,51 +145,42 @@ void main()
     /* TODO: finediff */
 
     writefln("print");
-    //printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
+    printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
 
     writefln("Cleaning up");
 
     gnuDiff.cleanup();
 
-    //Thread.sleep(dur!("seconds")(50));
+
+
+    auto d3la = Diff3LineArray(diff3LineList[]);
+    int nrOfLines = to!int(d3la.length);
+    writefln("nr of lines in d3la is %d\n", nrOfLines);
+
+    Thread.sleep(dur!("seconds")(5));
 
     initscr();
     cbreak();
     noecho();
     refresh();
 
-    int line_offset = 0;
+
+    int one_third = COLS / 3;
+    int two_thirds = (2 * COLS) / 3;
 
     int win_start_x = 0;
     int win_start_y = 1;
     int xsize = COLS / 2;
     int ysize = LINES - 1;
 
-    int pad_start_x = win_start_x + 1;
-    int pad_start_y = win_start_y + 1;
-    int pad_xsize = xsize - 2;
-    int pad_ysize = ysize - 2;
 
 
-    auto inputPane = new InputPane(win_start_x, win_start_y, xsize, ysize, lps[0].getMaxWidth() + 1, lps[0].getLastLineNumber() + 1);
-    auto missingLineTuple = inputPane.beginMissingLineUpdate();
-
-    for(int y = missingLineTuple[0]; y < missingLineTuple[0] + missingLineTuple[1]; y++)
-    {
-        inputPane.addMissingLine(y, lps[0].get(y));
-    }
-    inputPane.endMissingLineUpdate();
-    inputPane.redrawAll();
-
-    auto right_win = newwin(ysize, COLS - xsize, 1, xsize);
-    box(right_win, 0 , 0);
-    wrefresh(right_win);
-
-
-    auto right_pad = newpad(LINES - 3, xsize - 2);
-    scrollok(right_pad, true);
-    wprintw(right_pad, toStringz(format("maxwidth is %d\n", lps[0].getMaxWidth())));
-    prefresh(right_pad, 0, 0, 2, xsize + 2, LINES - 2, COLS - 2);
+    auto inputPane1 = new InputPane(0, win_start_y, one_third, ysize, lps[0].getMaxWidth() + 1, nrOfLines);
+    auto inputPane2 = new InputPane(one_third, win_start_y, two_thirds - one_third, ysize, lps[1].getMaxWidth() + 1, nrOfLines);
+    auto inputPane3 = new InputPane(two_thirds, win_start_y, COLS - two_thirds, ysize, lps[2].getMaxWidth() + 1, nrOfLines);
+    updateInputPane(inputPane1, d3la, 0, lps[0]);
+    updateInputPane(inputPane2, d3la, 1, lps[1]);
+    updateInputPane(inputPane3, d3la, 2, lps[2]);
 
     int ch = 'x';
     while(ch != 'q')
@@ -178,32 +190,32 @@ void main()
         switch(ch)
         {
         case 'j':
-            inputPane.scrollY(1);
+            inputPane1.scrollY(1);
+            inputPane2.scrollY(1);
+            inputPane3.scrollY(1);
             break;
         case 'i':
-            inputPane.scrollY(-1);
+            inputPane1.scrollY(-1);
+            inputPane2.scrollY(-1);
+            inputPane3.scrollY(-1);
             break;
         case 'k':
-            wprintw(right_pad, "scrolling left\n");
-            inputPane.scrollX(-1);
+            inputPane1.scrollX(-1);
+            inputPane2.scrollX(-1);
+            inputPane3.scrollX(-1);
             break;
         case 'l':
-            wprintw(right_pad, "scrolling right\n");
-            inputPane.scrollX(1);
+            inputPane1.scrollX(1);
+            inputPane2.scrollX(1);
+            inputPane3.scrollX(1);
             break;
         default:
             break;
         }
 
-        missingLineTuple = inputPane.beginMissingLineUpdate();
-        for(int y = missingLineTuple[0]; y < missingLineTuple[0] + missingLineTuple[1]; y++)
-        {
-            inputPane.addMissingLine(y, lps[0].get(y));
-        }
-        inputPane.endMissingLineUpdate();
-        inputPane.redrawAll();
-
-        prefresh(right_pad, 0, 0, 2, xsize + 2, LINES - 2, COLS - 2);
+        updateInputPane(inputPane1, d3la, 0, lps[0]);
+        updateInputPane(inputPane2, d3la, 1, lps[1]);
+        updateInputPane(inputPane3, d3la, 2, lps[2]);
     }
     endwin();
 }

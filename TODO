@@ -1,18 +1,41 @@
 Already implemented:
 - kdiff3's comparison algorithm (except for fineDiff)
-- implement a sub-window that shows a file's content + 
-    scrolling up and down one line at a time (press i or j) or
-    scrolling sideways one column at a time (press k or l)
+- diff view of three files. The only thing you can do is scroll up and down one line at a time.
 
 I plan to follow the following list from top to bottom for implementing new
 functionality. 
 
+- fix bug: d3ll should not have any completely empty entries at the end
 - implement ncurses ui
-  - add line numbers to sub-window
-  - diff view of three files. The only thing you can do is scroll up and down one line at a time.
-  - add scrollbar (read-only, just to show where you are in the file)
+  - fix horizontal scrolling to scroll all panes simultaneously
   - also support just 2 files
   - implement resizing when the terminal is resized
+  - add line numbers to sub-window
+  - add scrollbar (read-only, just to show where you are in the file)
+  - create editable window
+
+    supported keys:
+    - arrows for navigation
+    - regular chars
+    - delete, backspace
+    - home, end
+    - pageup/down
+    - ctrl-home/ctrl-end
+    - ctrl-c/ctrl-v -> copy/paste
+    - ctrl-insert/shift-insert -> copy/paste
+    - tab -> insert spaces upto tabstop
+
+    selection keys
+    - shift-arrows -> char/line selection
+    - ctrl-shift-left/right -> word selection
+    - shift-home/end -> select to beginning/end of line
+    - ctrl-shift-home/end -> select to beginning/end of file
+    - shift-page up/down -> select to prev/next page
+
+    diff specific keys
+    - ctrl-up/down -> prev/next difference
+    - ctrl-pageup/down -> prev/next conflict
+    - ctrl-1/2/3 -> append/remove line from A/B/C at selected conflict position
 - implement merging (without manual editing at first)
 - implement manual editing of the merge result
   - add configuration file and settings dialog

@@ -80,4 +80,5 @@ struct Diff3Line
 }
 
 alias Diff3LineList = DList!Diff3Line;
+alias Diff3LineArray = Array!Diff3Line;
 

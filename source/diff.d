@@ -906,7 +906,7 @@ void trimDiff3LineList(ref Diff3LineList d3ll,
             r3c.popFront();
             lineC++;
         }
-                
+
         if( line > lineA && r3.front.lineA != -1 && !r3.front.bAEqB && !r3.front.bAEqC )
         {
             r3a.front.lineA = r3.front.lineA;
