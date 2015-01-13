@@ -5,6 +5,7 @@ import std.typecons;
 
 import deimos.ncurses.curses;
 
+import icontentprovider;
 import myassert;
 
 class InputPane
@@ -26,26 +27,16 @@ private:
     int m_padY;
     WINDOW *m_pad;
 
-    int m_contentWidth;
-    int m_contentHeight;
-
-    /* To indicate which part of the pad needs to be filled with content.
-     * Initially this is the entire pad, but usually it is only the part that
-     * scrolled into view.
-     */
-    int m_missingLinesOffset;
-    int m_missingLinesCount;
-    bool m_updatingMissingLines = false;
+    IContentProvider m_cp;
 
 public:
-    this(int x, int y, int width, int height, int contentWidth, int contentHeight)
+    this(int x, int y, int width, int height, IContentProvider cp)
     {
         m_windowX = x;
         m_windowY = y;
         m_windowWidth = width;
         m_windowHeight = height;
-        m_contentWidth = contentWidth;
-        m_contentHeight = contentHeight;
+        m_cp = cp;
 
         m_window = newwin(height, width, y, x);
 
@@ -55,54 +46,19 @@ public:
         m_padX = x + 1;
         m_padY = y + 1;
 
-        m_pad = newpad(m_viewHeight, m_contentWidth);
+        m_pad = newpad(m_viewHeight, m_cp.getContentWidth());
 
-        m_missingLinesOffset = 0;
-        m_missingLinesCount = m_viewHeight;
+        drawMissingLines(0, m_viewHeight);
     }
 
     int getMaxScrollPositionX()
     {
-        return m_contentWidth - m_viewWidth;
+        return m_cp.getContentWidth() - m_viewWidth;
     }
 
     int getMaxScrollPositionY()
     {
-        return m_contentHeight - m_viewHeight;
-    }
-
-    auto beginMissingLineUpdate()
-    {
-        assert(!m_updatingMissingLines);
-        m_updatingMissingLines = true;
-
-        /* Set the cursor position to the first missing line now, so the
-         * missing lines (with newlines) can be printed without having to deal
-         * with cursor positions for every line
-         */
-        wmove(m_pad, m_missingLinesOffset, 0);
-        return tuple(m_scrollPositionY + m_missingLinesOffset, m_missingLinesCount);
-    }
-
-    void addMissingLine(int position, string line)
-    {
-        assert(m_updatingMissingLines);
-        assert(m_missingLinesCount > 0);
-
-        assertEqual(position, m_scrollPositionY + m_missingLinesOffset);
-
-        wprintw(m_pad, toStringz(line));
-
-        m_missingLinesOffset++;
-        m_missingLinesCount--;
-    }
-
-    void endMissingLineUpdate()
-    {
-        assert(m_updatingMissingLines);
-        m_updatingMissingLines = false;
-
-        assert(m_missingLinesCount == 0);
+        return m_cp.getContentHeight() - m_viewHeight;
     }
 
     void scrollX(int n)
@@ -123,18 +79,35 @@ public:
         }
     }
 
+    private void drawMissingLines(int missingLinesOffset, int missingLinesCount)
+    {
+        int firstLine = m_scrollPositionY + missingLinesOffset;
+        int lastLine = firstLine + missingLinesCount - 1;
+
+        wmove(m_pad, missingLinesOffset, 0);
+        for(int i = firstLine; i <= lastLine; i++)
+        {
+            auto line = m_cp.get(i);
+            if(line.isNull)
+            {
+                line = "\n";
+            }
+            wprintw(m_pad, toStringz(line));
+        }
+    }
+
     void scrollY(int n)
     {
-        assert(m_missingLinesCount == 0);
-
+        int missingLinesOffset;
+        int missingLinesCount;
 
         if(n > 0)
         {
             auto max_n = getMaxScrollPositionY() - m_scrollPositionY;
             n = min(max_n, n);
 
-            m_missingLinesCount = min(n, m_viewHeight);
-            m_missingLinesOffset = m_viewHeight - m_missingLinesCount;
+            missingLinesCount = min(n, m_viewHeight);
+            missingLinesOffset = m_viewHeight - missingLinesCount;
             m_scrollPositionY += n;
         }
         else
@@ -142,14 +115,16 @@ public:
             auto min_n = -m_scrollPositionY;
             n = max(min_n, n);
 
-            m_missingLinesCount = min(abs(n), m_viewHeight);
-            m_missingLinesOffset = 0;
+            missingLinesCount = min(abs(n), m_viewHeight);
+            missingLinesOffset = 0;
             m_scrollPositionY += n;
         }
 
         scrollok(m_pad, true);
         wscrl(m_pad, n);
         scrollok(m_pad, false);
+
+        drawMissingLines(missingLinesOffset, missingLinesCount);
     }
 
     void setPosition(int posX, int posY)
@@ -160,9 +135,6 @@ public:
     /* Redraws content */
     void redraw()
     {
-        assert(m_missingLinesCount == 0);
-        assert(!m_updatingMissingLines);
-
         prefresh(m_pad, 0, m_scrollPositionX, m_padY, m_padX, m_padY + m_viewHeight - 1, m_padX + m_viewWidth - 1);
     }
 

@@ -20,6 +20,7 @@
  */
 
 import core.thread;
+import std.algorithm;
 import std.array;
 import std.c.locale;
 import std.container;
@@ -31,11 +32,12 @@ import deimos.ncurses.curses;
 
 import common;
 import diff;
+import diff3contentprovider;
 import fifowriter;
 import gnudiff;
 import ilineprovider;
-import simplefilelineprovider;
 import inputpane;
+import simplefilelineprovider;
 
 void printDiff3List(Diff3LineList d3ll,
                     shared ILineProvider lpA,
@@ -74,28 +76,6 @@ void printDiff3List(Diff3LineList d3ll,
         writefln("%s %s %s", lineAText, lineBText, lineCText);
     }
 }
-
-void updateInputPane(InputPane inputPane, Diff3LineArray d3la, int n, shared ILineProvider lp)
-{
-    auto missingLineTuple = inputPane.beginMissingLineUpdate();
-
-    for(int y = missingLineTuple[0]; y < missingLineTuple[0] + missingLineTuple[1]; y++)
-    {
-        string line;
-        if(d3la[y].line(n) == -1)
-        {
-            line = "\n";
-        }
-        else
-        {
-            line = lp.get(d3la[y].line(n));
-        }
-        inputPane.addMissingLine(y, line);
-    }
-    inputPane.endMissingLineUpdate();
-    inputPane.redrawAll();
-}
-
 
 void main()
 {
@@ -155,9 +135,12 @@ void main()
 
     auto d3la = Diff3LineArray(diff3LineList[]);
     int nrOfLines = to!int(d3la.length);
+    int nrOfColumns = max(lps[0].getMaxWidth() + 1,
+                          lps[1].getMaxWidth() + 1,
+                          lps[2].getMaxWidth() + 1);
     writefln("nr of lines in d3la is %d\n", nrOfLines);
 
-    Thread.sleep(dur!("seconds")(5));
+    //Thread.sleep(dur!("seconds")(5));
 
     initscr();
     cbreak();
@@ -174,13 +157,18 @@ void main()
     int ysize = LINES - 1;
 
 
+    auto d3cp1 = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 0, lps[0]);
+    auto d3cp2 = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 1, lps[1]);
+    auto d3cp3 = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 2, lps[2]);
 
-    auto inputPane1 = new InputPane(0, win_start_y, one_third, ysize, lps[0].getMaxWidth() + 1, nrOfLines);
-    auto inputPane2 = new InputPane(one_third, win_start_y, two_thirds - one_third, ysize, lps[1].getMaxWidth() + 1, nrOfLines);
-    auto inputPane3 = new InputPane(two_thirds, win_start_y, COLS - two_thirds, ysize, lps[2].getMaxWidth() + 1, nrOfLines);
-    updateInputPane(inputPane1, d3la, 0, lps[0]);
-    updateInputPane(inputPane2, d3la, 1, lps[1]);
-    updateInputPane(inputPane3, d3la, 2, lps[2]);
+
+    auto inputPane1 = new InputPane(0, win_start_y, one_third, ysize, d3cp1);
+    auto inputPane2 = new InputPane(one_third, win_start_y, two_thirds - one_third, ysize, d3cp2);
+    auto inputPane3 = new InputPane(two_thirds, win_start_y, COLS - two_thirds, ysize, d3cp3);
+
+    inputPane1.redrawAll();
+    inputPane2.redrawAll();
+    inputPane3.redrawAll();
 
     int ch = 'x';
     while(ch != 'q')
@@ -213,9 +201,10 @@ void main()
             break;
         }
 
-        updateInputPane(inputPane1, d3la, 0, lps[0]);
-        updateInputPane(inputPane2, d3la, 1, lps[1]);
-        updateInputPane(inputPane3, d3la, 2, lps[2]);
+        inputPane1.redraw();
+        inputPane2.redraw();
+        inputPane3.redraw();
+
     }
     endwin();
 }
