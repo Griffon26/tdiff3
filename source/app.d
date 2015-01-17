@@ -23,8 +23,8 @@ import core.thread;
 import std.algorithm;
 import std.array;
 import std.c.locale;
-import std.container;
 import std.conv;
+import std.math;
 import std.stdio;
 import std.string;
 
@@ -33,11 +33,11 @@ import deimos.ncurses.curses;
 import common;
 import diff;
 import diff3contentprovider;
-import fifowriter;
 import gnudiff;
 import icontentprovider;
 import ilineprovider;
 import inputpanes;
+import linenumbercontentprovider;
 import simplefilelineprovider;
 
 void printDiff3List(Diff3LineList d3ll,
@@ -139,6 +139,7 @@ void main()
     int nrOfColumns = max(lps[0].getMaxWidth() + 1,
                           lps[1].getMaxWidth() + 1,
                           lps[2].getMaxWidth() + 1);
+    int lineNumberWidth = to!int(trunc(log10(nrOfLines))) + 1;
     writefln("nr of lines in d3la is %d\n", nrOfLines);
 
     //Thread.sleep(dur!("seconds")(5));
@@ -151,12 +152,17 @@ void main()
     int ysize = LINES - 1;
 
 
-    IContentProvider[3] d3cp;
-    d3cp[0] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 0, lps[0]);
-    d3cp[1] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 1, lps[1]);
-    d3cp[2] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 2, lps[2]);
+    IContentProvider[3] cps;
+    cps[0] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 0, lps[0]);
+    cps[1] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 1, lps[1]);
+    cps[2] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 2, lps[2]);
 
-    auto inputPanes = new InputPanes(0, win_start_y, COLS, ysize, d3cp);
+    IContentProvider[3] lnps;
+    lnps[0] = new LineNumberContentProvider(lineNumberWidth, nrOfLines, d3la, 0);
+    lnps[1] = new LineNumberContentProvider(lineNumberWidth, nrOfLines, d3la, 1);
+    lnps[2] = new LineNumberContentProvider(lineNumberWidth, nrOfLines, d3la, 2);
+
+    auto inputPanes = new InputPanes(0, win_start_y, COLS, ysize, cps, lnps);
 
     /* Refresh stdscr to make sure the static items are drawn and stdscr won't
      * be refreshed again when getch() is called */

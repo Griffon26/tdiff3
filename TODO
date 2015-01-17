@@ -9,7 +9,6 @@ functionality.
 - implement ncurses ui
   - also support just 2 files
   - implement resizing when the terminal is resized
-  - add line numbers to sub-window
   - add scrollbar (read-only, just to show where you are in the file)
   - create editable window
 

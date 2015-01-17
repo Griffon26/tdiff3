@@ -30,6 +30,7 @@ import inputpane;
 class InputPanes
 {
 private:
+    InputPane[3] m_lineNumberPanes;
     InputPane[3] m_inputPanes;
 
     int scrollBarWidth = 1;
@@ -38,12 +39,17 @@ private:
     int nrOfPanes = 3;
 
 public:
-    this(int x, int y, int width, int height, IContentProvider[3] cps)
+    this(int x, int y, int width, int height, IContentProvider[3] cps, IContentProvider[3] lnps)
     {
         assert(cps[0].getContentHeight() == cps[1].getContentHeight() &&
                cps[0].getContentHeight() == cps[2].getContentHeight());
+        assert(lnps[0].getContentHeight() == lnps[1].getContentHeight() &&
+               lnps[0].getContentHeight() == lnps[2].getContentHeight());
+        assert(cps[0].getContentHeight() == lnps[0].getContentHeight());
 
-        int lineNumberWidth = to!int(trunc(log10(cps[0].getContentHeight()))) + 1;
+        assert(lnps[0].getContentWidth() == lnps[1].getContentWidth() &&
+               lnps[0].getContentWidth() == lnps[2].getContentWidth());
+        int lineNumberWidth = lnps[0].getContentWidth();
 
         /* Draw a box around the input panes */
         mvhline(y, x, ACS_HLINE, width - 1);
@@ -61,6 +67,9 @@ public:
                               borderWidth;
         int inputPaneHeight = height - 2 * borderWidth;
 
+        int maxScrollPositionX = cps[0].getContentWidth() - (summedPaneWidth + 2) / 3;
+        int maxScrollPositionY = cps[0].getContentHeight() - inputPaneHeight;
+
         int remainingPaneWidth = summedPaneWidth;
         int paneOffset = x;
         for(int i = 0; i < nrOfPanes; i++)
@@ -74,12 +83,16 @@ public:
                 mvaddch(y + height - 1, paneOffset, ACS_BTEE);
                 mvvline(y + 1, paneOffset, ACS_VLINE, height - 2);
             }
+            paneOffset += borderWidth;
 
-            paneOffset += borderWidth + lineNumberWidth + diffStatusWidth;
+            /* Draw line numbers */
+            m_lineNumberPanes[i] = new InputPane(paneOffset, y + 1,
+                                                 lineNumberWidth, inputPaneHeight,
+                                                 0, maxScrollPositionY,
+                                                 lnps[i]);
+            paneOffset += lineNumberWidth + diffStatusWidth;
 
-            auto maxScrollPositionX = cps[0].getContentWidth() - (summedPaneWidth + 2) / 3;
-            auto maxScrollPositionY = cps[0].getContentHeight() - inputPaneHeight;
-
+            /* Draw file content */
             m_inputPanes[i] = new InputPane(paneOffset, y + 1,
                                             paneWidth, inputPaneHeight,
                                             maxScrollPositionX, maxScrollPositionY,
@@ -102,6 +115,10 @@ public:
 
     void scrollY(int n)
     {
+        foreach(lnp; m_lineNumberPanes)
+        {
+            lnp.scrollY(n);
+        }
         foreach(ip; m_inputPanes)
         {
             ip.scrollY(n);
@@ -111,6 +128,10 @@ public:
     /* Redraws content */
     void redraw()
     {
+        foreach(lnp; m_lineNumberPanes)
+        {
+            lnp.redraw();
+        }
         foreach(ip; m_inputPanes)
         {
             ip.redraw();
