@@ -4,10 +4,9 @@
 	"copyright": "Copyright © 2014, griffon26",
 	"authors": ["griffon26"],
 	"dependencies": {
-        "d-unit": ">=0.7.1"
+        "d-unit": ">=0.7.1",
+        "ncurses": "~master"
 	},
 	"configurations": [
-	],
-    "importPaths": [ "../ncurses" ],
-    "libs": [ "ncursesw" ]
+	]
 }

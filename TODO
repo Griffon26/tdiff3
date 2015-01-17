@@ -1,13 +1,13 @@
 Already implemented:
 - kdiff3's comparison algorithm (except for fineDiff)
-- diff view of three files. The only thing you can do is scroll up and down one line at a time.
+- diff view of three files. The only thing you can do is scroll one line/column at a time.
 
 I plan to follow the following list from top to bottom for implementing new
 functionality. 
 
 - fix bug: d3ll should not have any completely empty entries at the end
 - implement ncurses ui
-  - fix horizontal scrolling to scroll all panes simultaneously
+  - have InputPanes draw lines between the panes
   - also support just 2 files
   - implement resizing when the terminal is resized
   - add line numbers to sub-window

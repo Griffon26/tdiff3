@@ -35,8 +35,9 @@ import diff;
 import diff3contentprovider;
 import fifowriter;
 import gnudiff;
+import icontentprovider;
 import ilineprovider;
-import inputpane;
+import inputpanes;
 import simplefilelineprovider;
 
 void printDiff3List(Diff3LineList d3ll,
@@ -147,28 +148,18 @@ void main()
     noecho();
     refresh();
 
-
-    int one_third = COLS / 3;
-    int two_thirds = (2 * COLS) / 3;
-
-    int win_start_x = 0;
     int win_start_y = 1;
-    int xsize = COLS / 2;
     int ysize = LINES - 1;
 
 
-    auto d3cp1 = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 0, lps[0]);
-    auto d3cp2 = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 1, lps[1]);
-    auto d3cp3 = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 2, lps[2]);
+    IContentProvider[3] d3cp;
+    d3cp[0] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 0, lps[0]);
+    d3cp[1] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 1, lps[1]);
+    d3cp[2] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 2, lps[2]);
 
+    auto inputPanes = new InputPanes(0, win_start_y, COLS, ysize, d3cp);
 
-    auto inputPane1 = new InputPane(0, win_start_y, one_third, ysize, d3cp1);
-    auto inputPane2 = new InputPane(one_third, win_start_y, two_thirds - one_third, ysize, d3cp2);
-    auto inputPane3 = new InputPane(two_thirds, win_start_y, COLS - two_thirds, ysize, d3cp3);
-
-    inputPane1.redrawAll();
-    inputPane2.redrawAll();
-    inputPane3.redrawAll();
+    inputPanes.redraw();
 
     int ch = 'x';
     while(ch != 'q')
@@ -178,32 +169,22 @@ void main()
         switch(ch)
         {
         case 'j':
-            inputPane1.scrollY(1);
-            inputPane2.scrollY(1);
-            inputPane3.scrollY(1);
+            inputPanes.scrollY(1);
             break;
         case 'i':
-            inputPane1.scrollY(-1);
-            inputPane2.scrollY(-1);
-            inputPane3.scrollY(-1);
+            inputPanes.scrollY(-1);
             break;
         case 'k':
-            inputPane1.scrollX(-1);
-            inputPane2.scrollX(-1);
-            inputPane3.scrollX(-1);
+            inputPanes.scrollX(-1);
             break;
         case 'l':
-            inputPane1.scrollX(1);
-            inputPane2.scrollX(1);
-            inputPane3.scrollX(1);
+            inputPanes.scrollX(1);
             break;
         default:
             break;
         }
 
-        inputPane1.redraw();
-        inputPane2.redraw();
-        inputPane3.redraw();
+        inputPanes.redraw();
 
     }
     endwin();
