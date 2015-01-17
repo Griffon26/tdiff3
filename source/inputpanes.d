@@ -22,6 +22,7 @@ private:
 
     int scrollBarWidth = 1;
     int borderWidth = 1;
+    int diffStatusWidth = 1;
     int nrOfPanes = 3;
 
     int m_inputPaneHeight;
@@ -37,9 +38,20 @@ public:
 
         int lineNumberWidth = to!int(trunc(log10(cps[0].getContentHeight()))) + 1;
 
+        /* Draw a box around the input panes */
+        mvhline(y, x, ACS_HLINE, width - 1);
+        mvvline(y, x, ACS_VLINE, height - 1);
+        mvhline(y + height - 1, x, ACS_HLINE, width - 1);
+        mvvline(y, x + width - 1, ACS_VLINE, height - 1);
+
+        mvaddch(y, x, ACS_ULCORNER);
+        mvaddch(y, x + width - 1, ACS_URCORNER);
+        mvaddch(y + height - 1, x, ACS_LLCORNER);
+        mvaddch(y + height - 1, x + width - 1, ACS_LRCORNER);
+
         int summedPaneWidth = width - scrollBarWidth -
-                              (nrOfPanes + 1) * borderWidth -
-                              nrOfPanes * lineNumberWidth;
+                              nrOfPanes * (borderWidth + lineNumberWidth + diffStatusWidth) -
+                              borderWidth;
         m_inputPaneHeight = height - 2 * borderWidth;
 
         int remainingPaneWidth = summedPaneWidth;
@@ -47,7 +59,16 @@ public:
         for(int i = 0; i < nrOfPanes; i++)
         {
             int paneWidth = remainingPaneWidth / (nrOfPanes - i);
-            paneOffset += borderWidth + lineNumberWidth;
+
+            /* Draw borders before the second and third pane */
+            if(i != 0)
+            {
+                mvaddch(y, paneOffset, ACS_TTEE);
+                mvaddch(y + height - 1, paneOffset, ACS_BTEE);
+                mvvline(y + 1, paneOffset, ACS_VLINE, height - 2);
+            }
+
+            paneOffset += borderWidth + lineNumberWidth + diffStatusWidth;
 
             m_inputPanes[i] = new InputPane(paneOffset, y + 1, paneWidth, m_inputPaneHeight, cps[i]);
 

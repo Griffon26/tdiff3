@@ -7,7 +7,6 @@ functionality.
 
 - fix bug: d3ll should not have any completely empty entries at the end
 - implement ncurses ui
-  - have InputPanes draw lines between the panes
   - also support just 2 files
   - implement resizing when the terminal is resized
   - add line numbers to sub-window

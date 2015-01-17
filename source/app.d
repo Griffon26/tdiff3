@@ -146,7 +146,6 @@ void main()
     initscr();
     cbreak();
     noecho();
-    refresh();
 
     int win_start_y = 1;
     int ysize = LINES - 1;
@@ -159,6 +158,9 @@ void main()
 
     auto inputPanes = new InputPanes(0, win_start_y, COLS, ysize, d3cp);
 
+    /* Refresh stdscr to make sure the static items are drawn and stdscr won't
+     * be refreshed again when getch() is called */
+    refresh();
     inputPanes.redraw();
 
     int ch = 'x';
