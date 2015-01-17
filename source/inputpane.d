@@ -12,19 +12,24 @@ import myassert;
 class InputPane
 {
 private:
-    int m_scrollPositionX = 0;
-    int m_scrollPositionY = 0;
-
     int m_x;
     int m_y;
     int m_width;
     int m_height;
-    WINDOW *m_pad;
-
+    int m_maxScrollPositionX;
+    int m_maxScrollPositionY;
     IContentProvider m_cp;
 
+    WINDOW *m_pad;
+
+    int m_scrollPositionX = 0;
+    int m_scrollPositionY = 0;
+
 public:
-    this(int x, int y, int width, int height, IContentProvider cp)
+    this(int x, int y,
+         int width, int height,
+         int maxScrollPositionX, int maxScrollPositionY,
+         IContentProvider cp)
     {
         m_cp = cp;
 
@@ -32,15 +37,12 @@ public:
         m_y = y;
         m_width = width;
         m_height = height;
+        m_maxScrollPositionX = maxScrollPositionX;
+        m_maxScrollPositionY = maxScrollPositionY;
 
         m_pad = newpad(height, m_cp.getContentWidth());
 
         drawMissingLines(0, 0, height);
-    }
-
-    void scrollX(int n)
-    {
-        m_scrollPositionX += n;
     }
 
     void drawMissingLines(int contentLineOffset, int displayLineOffset, int count)
@@ -60,14 +62,53 @@ public:
         }
     }
 
+    void scrollX(int n)
+    {
+        if(n > 0)
+        {
+            auto max_n = m_maxScrollPositionX - m_scrollPositionX;
+            n = min(max_n, n);
+        }
+        else
+        {
+            auto min_n = -m_scrollPositionX;
+            n = max(min_n, n);
+        }
+
+        m_scrollPositionX += n;
+    }
+
     void scrollY(int n)
     {
+        int missingLinesOffset;
+        int missingLinesCount;
+
+        if(n > 0)
+        {
+            auto max_n = m_maxScrollPositionY - m_scrollPositionY;
+            n = min(max_n, n);
+
+            missingLinesCount = min(n, m_height);
+            missingLinesOffset = m_height - missingLinesCount;
+        }
+        else
+        {
+            auto min_n = -m_scrollPositionY;
+            n = max(min_n, n);
+
+            missingLinesCount = min(abs(n), m_height);
+            missingLinesOffset = 0;
+        }
+
         m_scrollPositionY += n;
 
         scrollok(m_pad, true);
         wscrl(m_pad, n);
         scrollok(m_pad, false);
+
+        drawMissingLines(m_scrollPositionY + missingLinesOffset, missingLinesOffset, missingLinesCount);
     }
+
 
     /* Redraws content */
     void redraw()
