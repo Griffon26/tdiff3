@@ -172,7 +172,9 @@ void main()
     int output_width = input_width;
     int output_height = input_height;
 
-    auto outputPane = new OutputPane(output_x, output_y, output_width, output_height);
+    auto le = new LineEditable(lps[0]);
+    auto ecp = new EditableContentProvider(le);
+    auto outputPane = new OutputPane(output_x, output_y, output_width, output_height, ecp);
 
     /* Refresh stdscr to make sure the static items are drawn and stdscr won't
      * be refreshed again when getch() is called */

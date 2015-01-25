@@ -29,7 +29,7 @@ import icontentprovider;
 
 class InputPane
 {
-private:
+protected:
     int m_x;
     int m_y;
     int m_width;

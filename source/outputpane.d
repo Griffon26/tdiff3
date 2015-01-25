@@ -28,7 +28,9 @@ import std.typecons;
 
 import deimos.ncurses.curses;
 
+import icontentprovider;
 import ilineprovider;
+import inputpane;
 import myassert;
 
 struct Translation
@@ -483,7 +485,7 @@ unittest
     assertEqual(le.get(8), "line 5");
 }
 
-class EditableContent
+class EditableContentProvider: IContentProvider
 {
 private:
     bool m_selectionActive;
@@ -574,7 +576,7 @@ public:
             tr.firstLine = m_currentPos.line;
             tr.originalLineCount = 1;
             tr.editedLineCount = 1;
-            tr.lines = ["deletes done"];
+            tr.lines = ["deletes done\n"];
             m_le.applyEdit(tr);
         }
     }
@@ -601,32 +603,31 @@ public:
         insertText(m_copyPasteBuffer);
     }
 
-    /* ILineProvider methods */
+    /* IContentProvider methods */
 
     Nullable!string get(int line)
     {
         return m_le.get(line);
     }
 
-    Nullable!string get(int firstLine, int lastLine)
+    int getContentWidth()
     {
-        Nullable!string result;
-        result.nullify();
-        return result;
+        /* TODO: fix */
+        return 1000;
     }
 
-    int getLastLineNumber()
+    int getContentHeight()
     {
-        /* TODO: implement */
-        return 0;
+        /* TODO: fix */
+        return 1000;
     }
 }
 
 unittest
 {
-    /* Test if lines can be retrieved from EditableContent */
+    /* Test if lines can be retrieved from EditableContentProvider */
     auto le = new LineEditable(lp);
-    auto ec = new EditableContent(le);
+    auto ec = new EditableContentProvider(le);
 
     assertEqual(ec.get(1), "line 1");
     assertEqual(ec.get(2), "line 2");
@@ -636,7 +637,7 @@ unittest
 {
     /* Test if a line can be deleted */
     auto le = new LineEditable(lp);
-    auto ec = new EditableContent(le);
+    auto ec = new EditableContentProvider(le);
 
     ec.moveTo(Position(2, 3), false);
     ec.delete_();
@@ -650,7 +651,7 @@ unittest
 {
     /* Test if a line can be inserted */
     auto le = new LineEditable(lp);
-    auto ec = new EditableContent(le);
+    auto ec = new EditableContentProvider(le);
 
     ec.moveTo(Position(2, 3), false);
     ec.insertText("inserted");
@@ -664,7 +665,7 @@ unittest
 {
     /* Test if deleting a selection works */
     auto le = new LineEditable(lp);
-    auto ec = new EditableContent(le);
+    auto ec = new EditableContentProvider(le);
 
     ec.moveTo(Position(2, 3), false);
     ec.moveTo(Position(4, 2), true);
@@ -676,34 +677,21 @@ unittest
     assertEqual(ec.get(4), "line 5");
 }
 
-class OutputPane
+class OutputPane: InputPane
 {
 private:
-    int m_x;
-    int m_y;
-    int m_width;
-    int m_height;
-
-    WINDOW *m_pad;
-    WINDOW *m_debug;
+    EditableContentProvider m_ecp;
 
     int m_cursor_x;
     int m_cursor_y;
 
 public:
     this(int x, int y,
-         int width, int height)
+         int width, int height,
+         EditableContentProvider ecp)
     {
-        m_x = x;
-        m_y = y;
-        m_width = width;
-        m_height = height;
-
-        m_pad = newpad(height, width);
-        m_debug = newpad(10, width);
-        scrollok(m_debug, true);
-
-        wprintw(m_pad, "hoi allemaal");
+        super(x, y, width, height, 100, 100, ecp);
+        m_ecp = ecp;
     }
 
     bool handleKeyboardInput(int ch)
@@ -714,18 +702,37 @@ public:
         {
         case KEY_LEFT:
             m_cursor_x--;
+            m_ecp.moveTo(Position(m_cursor_y, m_cursor_x), false);
             break;
         case KEY_RIGHT:
             m_cursor_x++;
+            m_ecp.moveTo(Position(m_cursor_y, m_cursor_x), false);
             break;
         case KEY_UP:
             m_cursor_y--;
+            m_ecp.moveTo(Position(m_cursor_y, m_cursor_x), false);
+
+            auto distanceOffScreen = m_scrollPositionY - m_cursor_y;
+            if(distanceOffScreen > 0)
+            {
+                scrollY(-distanceOffScreen);
+            }
             break;
         case KEY_DOWN:
             m_cursor_y++;
+            m_ecp.moveTo(Position(m_cursor_y, m_cursor_x), false);
+
+            auto distanceOffScreen = m_cursor_y - m_height - m_scrollPositionY + 1;
+            if(distanceOffScreen > 0)
+            {
+                scrollY(distanceOffScreen);
+            }
+            break;
+        case KEY_DC:
+            m_ecp.delete_();
+            drawMissingLines(0, 0, m_height);
             break;
         default:
-            wprintw(m_debug, "unhandled\n");
             handled = false;
             break;
         }
@@ -733,24 +740,11 @@ public:
         return handled;
     }
 
-    void scrollX(int n)
-    {
-        /* TODO: implement */
-        assert(false);
-    }
-
-    void scrollY(int n)
-    {
-        /* TODO: implement */
-        assert(false);
-    }
-
     /* Redraws content */
-    void redraw()
+    override void redraw()
     {
-        prefresh(m_debug, 0, 0, m_y + m_height, m_x, m_y + m_height + 10 - 1, m_x + m_width - 1);
-        wmove(m_pad, m_cursor_y, m_cursor_x);
-        prefresh(m_pad, 0, 0, m_y, m_x, m_y + m_height - 1, m_x + m_width - 1);
+        wmove(m_pad, m_cursor_y - m_scrollPositionY, m_cursor_x);
+        super.redraw();
     }
 }
 
