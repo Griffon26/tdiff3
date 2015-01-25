@@ -33,12 +33,14 @@ import deimos.ncurses.curses;
 import common;
 import diff;
 import diff3contentprovider;
+import contenteditor;
+import editablecontentpane;
 import gnudiff;
 import icontentprovider;
 import ilineprovider;
 import inputpanes;
 import linenumbercontentprovider;
-import outputpane;
+import modifiedcontentprovider;
 import simplefilelineprovider;
 
 void printDiff3List(Diff3LineList d3ll,
@@ -172,22 +174,22 @@ void main()
     int output_width = input_width;
     int output_height = input_height;
 
-    auto le = new LineEditable(lps[0]);
-    auto ecp = new EditableContentProvider(le);
-    auto outputPane = new OutputPane(output_x, output_y, output_width, output_height, ecp);
+    auto modifiedContentProvider = new ModifiedContentProvider(lps[0]);
+    auto contentEditor = new ContentEditor(modifiedContentProvider);
+    auto editableContentPane = new EditableContentPane(output_x, output_y, output_width, output_height, modifiedContentProvider, contentEditor);
 
     /* Refresh stdscr to make sure the static items are drawn and stdscr won't
      * be refreshed again when getch() is called */
     refresh();
     inputPanes.redraw();
-    outputPane.redraw();
+    editableContentPane.redraw();
 
     int ch = 'x';
     while(ch != 'q')
     {
         ch = getch();
 
-        if(!outputPane.handleKeyboardInput(ch))
+        if(!editableContentPane.handleKeyboardInput(ch))
         {
             switch(ch)
             {
@@ -209,7 +211,7 @@ void main()
         }
 
         inputPanes.redraw();
-        outputPane.redraw();
+        editableContentPane.redraw();
     }
     endwin();
 }

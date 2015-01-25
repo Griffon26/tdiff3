@@ -27,7 +27,7 @@ import deimos.ncurses.curses;
 
 import icontentprovider;
 
-class InputPane
+class ContentPane
 {
 protected:
     int m_x;

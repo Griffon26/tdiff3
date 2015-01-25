@@ -25,13 +25,13 @@ import std.math;
 import deimos.ncurses.curses;
 
 import icontentprovider;
-import inputpane;
+import contentpane;
 
 class InputPanes
 {
 private:
-    InputPane[3] m_lineNumberPanes;
-    InputPane[3] m_inputPanes;
+    ContentPane[3] m_lineNumberPanes;
+    ContentPane[3] m_inputPanes;
 
     int scrollBarWidth = 1;
     int borderWidth = 1;
@@ -86,15 +86,15 @@ public:
             paneOffset += borderWidth;
 
             /* Draw line numbers */
-            m_lineNumberPanes[i] = new InputPane(paneOffset, y + 1,
-                                                 lineNumberWidth, inputPaneHeight,
-                                                 0, maxScrollPositionY,
-                                                 lnps[i]);
+            m_lineNumberPanes[i] = new ContentPane(paneOffset, y + 1,
+                                                   lineNumberWidth, inputPaneHeight,
+                                                   0, maxScrollPositionY,
+                                                   lnps[i]);
             paneOffset += lineNumberWidth + diffStatusWidth;
 
             /* Draw file content */
-            m_inputPanes[i] = new InputPane(paneOffset, y + 1,
-                                            paneWidth, inputPaneHeight,
+            m_inputPanes[i] = new ContentPane(paneOffset, y + 1,
+                                              paneWidth, inputPaneHeight,
                                             maxScrollPositionX, maxScrollPositionY,
                                             cps[i]);
 
