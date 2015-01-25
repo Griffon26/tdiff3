@@ -23,8 +23,8 @@ import std.typecons;
 
 synchronized interface ILineProvider
 {
-    Nullable!string get(uint line);
-    Nullable!string get(uint firstLine, uint lastLine);
+    Nullable!string get(int line);
+    Nullable!string get(int firstLine, int lastLine);
     int getLastLineNumber();
 }
 

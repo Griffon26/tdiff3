@@ -57,7 +57,7 @@ synchronized class SimpleFileLineProvider: ILineProvider
     private string content;
     private string[] lines;
     private int lastpos;
-    private static immutable uint readahead = 100;
+    private static immutable int readahead = 100;
     private int m_maxWidth;
 
     this(string filename)
@@ -127,7 +127,7 @@ synchronized class SimpleFileLineProvider: ILineProvider
         return m_maxWidth;
     }
 
-    Nullable!string get(uint i)
+    Nullable!string get(int i)
     {
         Nullable!string result;
         ensure_line_is_available(i);
@@ -144,7 +144,7 @@ synchronized class SimpleFileLineProvider: ILineProvider
         return result;
     }
 
-    Nullable!string get(uint firstLine, uint lastLine)
+    Nullable!string get(int firstLine, int lastLine)
     {
         Nullable!string result;
         ensure_line_is_available(lastLine);
@@ -153,7 +153,7 @@ synchronized class SimpleFileLineProvider: ILineProvider
         {
             auto strBuilder = appender!string;
 
-            for(uint i = firstLine; i <= lastLine; i++)
+            for(int i = firstLine; i <= lastLine; i++)
             {
                 if(i >= lines.length)
                 {

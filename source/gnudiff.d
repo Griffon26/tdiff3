@@ -223,8 +223,6 @@ class GnuDiff
         int currentLine2 = 0;
         DiffList diffList;
 
-        writefln("difflines = '%s'", difflines);
-
         foreach(line; difflines.splitLines())
         {
             auto diff = gnudiffhunk_2_diff(line, currentLine1, currentLine2);
@@ -247,7 +245,7 @@ class GnuDiff
     unittest
     {
         DiffList dl;
-        
+
         /* Test equal files */
         dl = gnudiff_2_difflist("", 3, 3);
         assertEqual(array(dl[]), [Diff(3, 0, 0)]);

@@ -38,6 +38,7 @@ import icontentprovider;
 import ilineprovider;
 import inputpanes;
 import linenumbercontentprovider;
+import outputpane;
 import simplefilelineprovider;
 
 void printDiff3List(Diff3LineList d3ll,
@@ -147,10 +148,7 @@ void main()
     initscr();
     cbreak();
     noecho();
-
-    int win_start_y = 1;
-    int ysize = LINES - 1;
-
+    keypad(stdscr, true);
 
     IContentProvider[3] cps;
     cps[0] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 0, lps[0]);
@@ -162,38 +160,54 @@ void main()
     lnps[1] = new LineNumberContentProvider(lineNumberWidth, nrOfLines, d3la, 1);
     lnps[2] = new LineNumberContentProvider(lineNumberWidth, nrOfLines, d3la, 2);
 
-    auto inputPanes = new InputPanes(0, win_start_y, COLS, ysize, cps, lnps);
+    int input_x = 3;
+    int input_y = 5;
+    int input_width = 100;
+    int input_height = 25;
+
+    auto inputPanes = new InputPanes(input_x, input_y, input_width, input_height, cps, lnps);
+
+    int output_x = input_x;
+    int output_y = input_y + input_height + 2;
+    int output_width = input_width;
+    int output_height = input_height;
+
+    auto outputPane = new OutputPane(output_x, output_y, output_width, output_height);
 
     /* Refresh stdscr to make sure the static items are drawn and stdscr won't
      * be refreshed again when getch() is called */
     refresh();
     inputPanes.redraw();
+    outputPane.redraw();
 
     int ch = 'x';
     while(ch != 'q')
     {
         ch = getch();
 
-        switch(ch)
+        if(!outputPane.handleKeyboardInput(ch))
         {
-        case 'j':
-            inputPanes.scrollY(1);
-            break;
-        case 'i':
-            inputPanes.scrollY(-1);
-            break;
-        case 'k':
-            inputPanes.scrollX(-1);
-            break;
-        case 'l':
-            inputPanes.scrollX(1);
-            break;
-        default:
-            break;
+            switch(ch)
+            {
+            case 'j':
+                inputPanes.scrollY(1);
+                break;
+            case 'i':
+                inputPanes.scrollY(-1);
+                break;
+            case 'k':
+                inputPanes.scrollX(-1);
+                break;
+            case 'l':
+                inputPanes.scrollX(1);
+                break;
+            default:
+                break;
+            }
         }
 
         inputPanes.redraw();
-
+        outputPane.redraw();
     }
     endwin();
 }
