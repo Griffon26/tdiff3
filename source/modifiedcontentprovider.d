@@ -327,7 +327,7 @@ version(unittest)
         Nullable!string get(int line)
         {
             Nullable!string result;
-            result = format("line %d", line);
+            result = format("line %d\n", line);
             return result;
         }
 
@@ -352,8 +352,8 @@ unittest
     /* Check if the original lines are returned if there are no modifications */
     auto mcp = new ModifiedContentProvider(lp);
 
-    assertEqual(mcp.get(0), "line 0");
-    assertEqual(mcp.get(10), "line 10");
+    assertEqual(mcp.get(0), "line 0\n");
+    assertEqual(mcp.get(10), "line 10\n");
     assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1);
 }
 
@@ -362,12 +362,12 @@ unittest
     /* Test with one modification that inserts more lines than it replaces */
     auto mcp = new ModifiedContentProvider(lp);
 
-    mcp.applyModification(Modification(3, 1, 2, ["editedline 1", "editedline 2"]));
-    assertEqual(mcp.get(2), "line 2");
-    assertEqual(mcp.get(3), "editedline 1");
-    assertEqual(mcp.get(4), "editedline 2");
-    assertEqual(mcp.get(5), "line 4");
-    assertEqual(mcp.get(6), "line 5");
+    mcp.applyModification(Modification(3, 1, 2, ["editedline 1\n", "editedline 2\n"]));
+    assertEqual(mcp.get(2), "line 2\n");
+    assertEqual(mcp.get(3), "editedline 1\n");
+    assertEqual(mcp.get(4), "editedline 2\n");
+    assertEqual(mcp.get(5), "line 4\n");
+    assertEqual(mcp.get(6), "line 5\n");
     assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 1);
 }
 
@@ -376,11 +376,11 @@ unittest
     /* Test adding one modification that inserts fewer lines than it replaces */
     auto mcp = new ModifiedContentProvider(lp);
 
-    mcp.applyModification(Modification(3, 2, 1, ["editedline 1"]));
-    assertEqual(mcp.get(2), "line 2");
-    assertEqual(mcp.get(3), "editedline 1");
-    assertEqual(mcp.get(4), "line 5");
-    assertEqual(mcp.get(5), "line 6");
+    mcp.applyModification(Modification(3, 2, 1, ["editedline 1\n"]));
+    assertEqual(mcp.get(2), "line 2\n");
+    assertEqual(mcp.get(3), "editedline 1\n");
+    assertEqual(mcp.get(4), "line 5\n");
+    assertEqual(mcp.get(5), "line 6\n");
     assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 1);
 }
 
@@ -389,16 +389,16 @@ unittest
     /* Test adding a second modification that does not overlap after the first one */
     auto mcp = new ModifiedContentProvider(lp);
 
-    mcp.applyModification(Modification(3, 1, 2, ["editedline a1", "editedline a2"]));
-    mcp.applyModification(Modification(6, 1, 2, ["editedline b1", "editedline b2"]));
+    mcp.applyModification(Modification(3, 1, 2, ["editedline a1\n", "editedline a2\n"]));
+    mcp.applyModification(Modification(6, 1, 2, ["editedline b1\n", "editedline b2\n"]));
 
-    assertEqual(mcp.get(2), "line 2");
-    assertEqual(mcp.get(3), "editedline a1");
-    assertEqual(mcp.get(4), "editedline a2");
-    assertEqual(mcp.get(5), "line 4");
-    assertEqual(mcp.get(6), "editedline b1");
-    assertEqual(mcp.get(7), "editedline b2");
-    assertEqual(mcp.get(8), "line 6");
+    assertEqual(mcp.get(2), "line 2\n");
+    assertEqual(mcp.get(3), "editedline a1\n");
+    assertEqual(mcp.get(4), "editedline a2\n");
+    assertEqual(mcp.get(5), "line 4\n");
+    assertEqual(mcp.get(6), "editedline b1\n");
+    assertEqual(mcp.get(7), "editedline b2\n");
+    assertEqual(mcp.get(8), "line 6\n");
     assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 2);
 }
 
@@ -407,20 +407,20 @@ unittest
     /* Test adding a third modification that does not overlap between the first and second one */
     auto mcp = new ModifiedContentProvider(lp);
 
-    mcp.applyModification(Modification(2, 1, 2, ["editedline a1", "editedline a2"]));
-    mcp.applyModification(Modification(7, 1, 2, ["editedline b1", "editedline b2"]));
-    mcp.applyModification(Modification(5, 1, 2, ["editedline c1", "editedline c2"]));
+    mcp.applyModification(Modification(2, 1, 2, ["editedline a1\n", "editedline a2\n"]));
+    mcp.applyModification(Modification(7, 1, 2, ["editedline b1\n", "editedline b2\n"]));
+    mcp.applyModification(Modification(5, 1, 2, ["editedline c1\n", "editedline c2\n"]));
 
-    assertEqual(mcp.get(1), "line 1");
-    assertEqual(mcp.get(2), "editedline a1");
-    assertEqual(mcp.get(3), "editedline a2");
-    assertEqual(mcp.get(4), "line 3");
-    assertEqual(mcp.get(5), "editedline c1");
-    assertEqual(mcp.get(6), "editedline c2");
-    assertEqual(mcp.get(7), "line 5");
-    assertEqual(mcp.get(8), "editedline b1");
-    assertEqual(mcp.get(9), "editedline b2");
-    assertEqual(mcp.get(10), "line 7");
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "editedline a1\n");
+    assertEqual(mcp.get(3), "editedline a2\n");
+    assertEqual(mcp.get(4), "line 3\n");
+    assertEqual(mcp.get(5), "editedline c1\n");
+    assertEqual(mcp.get(6), "editedline c2\n");
+    assertEqual(mcp.get(7), "line 5\n");
+    assertEqual(mcp.get(8), "editedline b1\n");
+    assertEqual(mcp.get(9), "editedline b2\n");
+    assertEqual(mcp.get(10), "line 7\n");
     assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 3);
 }
 
@@ -429,14 +429,14 @@ unittest
     /* Test adding a second modification that overlaps with the end of the first one */
     auto mcp = new ModifiedContentProvider(lp);
 
-    mcp.applyModification(Modification(3, 1, 2, ["editedline a1", "editedline a2"]));
-    mcp.applyModification(Modification(4, 1, 2, ["editedline b1", "editedline b2"]));
+    mcp.applyModification(Modification(3, 1, 2, ["editedline a1\n", "editedline a2\n"]));
+    mcp.applyModification(Modification(4, 1, 2, ["editedline b1\n", "editedline b2\n"]));
 
-    assertEqual(mcp.get(2), "line 2");
-    assertEqual(mcp.get(3), "editedline a1");
-    assertEqual(mcp.get(4), "editedline b1");
-    assertEqual(mcp.get(5), "editedline b2");
-    assertEqual(mcp.get(6), "line 4");
+    assertEqual(mcp.get(2), "line 2\n");
+    assertEqual(mcp.get(3), "editedline a1\n");
+    assertEqual(mcp.get(4), "editedline b1\n");
+    assertEqual(mcp.get(5), "editedline b2\n");
+    assertEqual(mcp.get(6), "line 4\n");
     assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 2);
 }
 
@@ -445,14 +445,14 @@ unittest
     /* Test adding a second modification that overlaps with the beginning of the first one */
     auto mcp = new ModifiedContentProvider(lp);
 
-    mcp.applyModification(Modification(3, 1, 2, ["editedline a1", "editedline a2"]));
-    mcp.applyModification(Modification(2, 2, 2, ["editedline b1", "editedline b2"]));
+    mcp.applyModification(Modification(3, 1, 2, ["editedline a1\n", "editedline a2\n"]));
+    mcp.applyModification(Modification(2, 2, 2, ["editedline b1\n", "editedline b2\n"]));
 
-    assertEqual(mcp.get(1), "line 1");
-    assertEqual(mcp.get(2), "editedline b1");
-    assertEqual(mcp.get(3), "editedline b2");
-    assertEqual(mcp.get(4), "editedline a2");
-    assertEqual(mcp.get(5), "line 4");
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "editedline b1\n");
+    assertEqual(mcp.get(3), "editedline b2\n");
+    assertEqual(mcp.get(4), "editedline a2\n");
+    assertEqual(mcp.get(5), "line 4\n");
     assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 1);
 }
 
@@ -461,15 +461,15 @@ unittest
     /* Test adding a second modification that overlaps with the middle of the first one */
     auto mcp = new ModifiedContentProvider(lp);
 
-    mcp.applyModification(Modification(3, 1, 2, ["editedline a1", "editedline a2"]));
-    mcp.applyModification(Modification(2, 4, 4, ["editedline b1", "editedline b2", "editedline b3", "editedline b4"]));
+    mcp.applyModification(Modification(3, 1, 2, ["editedline a1\n", "editedline a2\n"]));
+    mcp.applyModification(Modification(2, 4, 4, ["editedline b1\n", "editedline b2\n", "editedline b3\n", "editedline b4\n"]));
 
-    assertEqual(mcp.get(1), "line 1");
-    assertEqual(mcp.get(2), "editedline b1");
-    assertEqual(mcp.get(3), "editedline b2");
-    assertEqual(mcp.get(4), "editedline b3");
-    assertEqual(mcp.get(5), "editedline b4");
-    assertEqual(mcp.get(6), "line 5");
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "editedline b1\n");
+    assertEqual(mcp.get(3), "editedline b2\n");
+    assertEqual(mcp.get(4), "editedline b3\n");
+    assertEqual(mcp.get(5), "editedline b4\n");
+    assertEqual(mcp.get(6), "line 5\n");
     assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 1);
 }
 
@@ -478,18 +478,18 @@ unittest
     /* Test adding a third modification that overlaps with the first and second modification */
     auto mcp = new ModifiedContentProvider(lp);
 
-    mcp.applyModification(Modification(2, 1, 2, ["editedline a1", "editedline a2"]));
-    mcp.applyModification(Modification(5, 1, 2, ["editedline b1", "editedline b2"]));
-    mcp.applyModification(Modification(3, 3, 4, ["editedline c1", "editedline c2", "editedline c3", "editedline c4"]));
+    mcp.applyModification(Modification(2, 1, 2, ["editedline a1\n", "editedline a2\n"]));
+    mcp.applyModification(Modification(5, 1, 2, ["editedline b1\n", "editedline b2\n"]));
+    mcp.applyModification(Modification(3, 3, 4, ["editedline c1\n", "editedline c2\n", "editedline c3\n", "editedline c4\n"]));
 
-    assertEqual(mcp.get(1), "line 1");
-    assertEqual(mcp.get(2), "editedline a1");
-    assertEqual(mcp.get(3), "editedline c1");
-    assertEqual(mcp.get(4), "editedline c2");
-    assertEqual(mcp.get(5), "editedline c3");
-    assertEqual(mcp.get(6), "editedline c4");
-    assertEqual(mcp.get(7), "editedline b2");
-    assertEqual(mcp.get(8), "line 5");
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "editedline a1\n");
+    assertEqual(mcp.get(3), "editedline c1\n");
+    assertEqual(mcp.get(4), "editedline c2\n");
+    assertEqual(mcp.get(5), "editedline c3\n");
+    assertEqual(mcp.get(6), "editedline c4\n");
+    assertEqual(mcp.get(7), "editedline b2\n");
+    assertEqual(mcp.get(8), "line 5\n");
     assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 3);
 }
 

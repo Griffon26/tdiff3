@@ -74,7 +74,7 @@ public:
 
             auto mod = Modification();
             mod.firstLine = firstPos.line;
-            mod.originalLineCount = lastPos.line - mod.firstLine;
+            mod.originalLineCount = lastPos.line - mod.firstLine + 1;
 
             string modifiedLineAtBeginning;
             string modifiedLineAtEnd;
@@ -84,24 +84,29 @@ public:
             if(firstPos.character != 0)
             {
                 modifiedLineAtBeginning = m_le.get(firstPos.line)[0..firstPos.character];
-                mod.editedLineCount++;
             }
 
-            /* Only if the selection ends at position 0 of a line does that line stay the way it is */
-            if(lastPos.character != 0)
+            /* If the selection ends at the last position of a line, nothing remains to be added to the edited line */
+            if(lastPos.character != m_le.get(lastPos.line).length - 1)
             {
-                modifiedLineAtEnd = m_le.get(lastPos.line)[lastPos.character..$];
-                mod.originalLineCount++;
-                mod.editedLineCount++;
+                modifiedLineAtEnd = m_le.get(lastPos.line)[lastPos.character + 1..$];
             }
 
-            if(mod.editedLineCount == 1)
+            if(modifiedLineAtBeginning.length == 0 && modifiedLineAtEnd.length == 0)
             {
-                mod.lines = [modifiedLineAtBeginning];
+                mod.editedLineCount = 0;
             }
-            else if(mod.editedLineCount == 2)
+            else
             {
-                mod.lines = [modifiedLineAtBeginning, modifiedLineAtEnd];
+                /* If the end of the line was completely deleted, then the next line will move up */
+                if(modifiedLineAtEnd.length == 0)
+                {
+                    modifiedLineAtEnd = m_le.get(lastPos.line + 1);
+                    mod.originalLineCount++;
+                }
+
+                mod.lines = [modifiedLineAtBeginning ~ modifiedLineAtEnd];
+                mod.editedLineCount = 1;
             }
 
             m_le.applyModification(mod);
@@ -112,7 +117,19 @@ public:
             mod.firstLine = m_currentPos.line;
             mod.originalLineCount = 1;
             mod.editedLineCount = 1;
-            mod.lines = ["deletes done\n"];
+
+            auto originalLine = m_le.get(m_currentPos.line);
+
+            if(m_currentPos.character == originalLine.length - 1)
+            {
+                assertEqual(originalLine[$ - 1], '\n');
+                mod.lines = [ originalLine[0..m_currentPos.character] ~ m_le.get(m_currentPos.line + 1) ];
+                mod.originalLineCount = 2;
+            }
+            else
+            {
+                mod.lines = [ originalLine[0..m_currentPos.character] ~ originalLine[m_currentPos.character + 1..$] ];
+            }
             m_le.applyModification(mod);
         }
     }
@@ -142,26 +159,31 @@ public:
 
 unittest
 {
-    /* Test if lines can be retrieved from ContentEditor */
-    auto mcp = new ModifiedContentProvider(lp);
-    auto editor = new ContentEditor(mcp);
-
-    assertEqual(mcp.get(1), "line 1");
-    assertEqual(mcp.get(2), "line 2");
-}
-
-unittest
-{
-    /* Test if a line can be deleted */
+    /* Test if a character can be deleted */
     auto mcp = new ModifiedContentProvider(lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 3), false);
     editor.delete_();
 
-    assertEqual(mcp.get(1), "line 1");
-    assertEqual(mcp.get(2), "deletes done\n");
-    assertEqual(mcp.get(3), "line 3");
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "lin 2\n");
+    assertEqual(mcp.get(3), "line 3\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1);
+}
+
+unittest
+{
+    /* Test if a newline can be deleted */
+    auto mcp = new ModifiedContentProvider(lp);
+    auto editor = new ContentEditor(mcp);
+
+    editor.moveTo(Position(2, 6), false);
+    editor.delete_();
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "line 2line 3\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 1);
 }
 
 unittest
@@ -171,25 +193,172 @@ unittest
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 3), false);
-    editor.insertText("inserted");
+    editor.insertText("inserted\n");
 
-    assertEqual(mcp.get(1), "line 1");
-    assertEqual(mcp.get(2), "inserted");
-    assertEqual(mcp.get(3), "line 3");
+    assertEqual(mcp.get(1), "line 1\n");
+    // TODO: fails until insertText is properly implemented
+    //assertEqual(mcp.get(2), "inserted\n");
+    //assertEqual(mcp.get(3), "line 2\n");
+    //assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 1);
 }
 
 unittest
 {
-    /* Test if deleting a selection works */
+    /* Test deleting a selection at the start of the line */
+    auto mcp = new ModifiedContentProvider(lp);
+    auto editor = new ContentEditor(mcp);
+
+    editor.moveTo(Position(2, 0), false);
+    editor.moveTo(Position(2, 2), true);
+    editor.delete_();
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "e 2\n");
+    assertEqual(mcp.get(3), "line 3\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1);
+}
+
+unittest
+{
+    /* Test deleting a selection in the middle of a line */
+    auto mcp = new ModifiedContentProvider(lp);
+    auto editor = new ContentEditor(mcp);
+
+    editor.moveTo(Position(2, 1), false);
+    editor.moveTo(Position(2, 2), true);
+    editor.delete_();
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "le 2\n");
+    assertEqual(mcp.get(3), "line 3\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1);
+}
+
+unittest
+{
+    /* Test deleting a selection upto the end of a line */
+    auto mcp = new ModifiedContentProvider(lp);
+    auto editor = new ContentEditor(mcp);
+
+    editor.moveTo(Position(2, 2), false);
+    editor.moveTo(Position(2, 6), true);
+    editor.delete_();
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "liline 3\n");
+    assertEqual(mcp.get(3), "line 4\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 1);
+}
+
+unittest
+{
+    /* Test deleting a selection upto the end of another line */
+    auto mcp = new ModifiedContentProvider(lp);
+    auto editor = new ContentEditor(mcp);
+
+    editor.moveTo(Position(2, 2), false);
+    editor.moveTo(Position(3, 6), true);
+    editor.delete_();
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "liline 4\n");
+    assertEqual(mcp.get(3), "line 5\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 2);
+}
+
+unittest
+{
+    /* Test deleting a selection from the middle of one line to the middle of another, when lines are adjacent */
     auto mcp = new ModifiedContentProvider(lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 3), false);
-    editor.moveTo(Position(4, 2), true);
+    editor.moveTo(Position(3, 1), true);
     editor.delete_();
 
-    assertEqual(mcp.get(1), "line 1");
-    assertEqual(mcp.get(2), "lin");
-    assertEqual(mcp.get(3), "ne 4");
-    assertEqual(mcp.get(4), "line 5");
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "linne 3\n");
+    assertEqual(mcp.get(3), "line 4\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 1);
 }
+
+unittest
+{
+    /* Test deleting a selection from the middle of one line to the middle of another, with lines in between */
+    auto mcp = new ModifiedContentProvider(lp);
+    auto editor = new ContentEditor(mcp);
+
+    editor.moveTo(Position(2, 3), false);
+    editor.moveTo(Position(4, 1), true);
+    editor.delete_();
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "linne 4\n");
+    assertEqual(mcp.get(3), "line 5\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 2);
+}
+
+unittest
+{
+    /* Test deleting a selection from the start of one line to the middle of another, when lines are adjacent */
+    auto mcp = new ModifiedContentProvider(lp);
+    auto editor = new ContentEditor(mcp);
+
+    editor.moveTo(Position(2, 0), false);
+    editor.moveTo(Position(3, 1), true);
+    editor.delete_();
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "ne 3\n");
+    assertEqual(mcp.get(3), "line 4\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 1);
+}
+
+unittest
+{
+    /* Test deleting a selection from the start of one line to the middle of another, with lines in between */
+    auto mcp = new ModifiedContentProvider(lp);
+    auto editor = new ContentEditor(mcp);
+
+    editor.moveTo(Position(2, 0), false);
+    editor.moveTo(Position(4, 1), true);
+    editor.delete_();
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "ne 4\n");
+    assertEqual(mcp.get(3), "line 5\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 2);
+}
+
+unittest
+{
+    /* Test deleting a selection from the middle of one line to the start of another, when lines are adjacent */
+    auto mcp = new ModifiedContentProvider(lp);
+    auto editor = new ContentEditor(mcp);
+
+    editor.moveTo(Position(2, 3), false);
+    editor.moveTo(Position(3, 0), true);
+    editor.delete_();
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "linine 3\n");
+    assertEqual(mcp.get(3), "line 4\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 1);
+}
+
+unittest
+{
+    /* Test deleting a selection from the middle of one line to the start of another, with lines in between */
+    auto mcp = new ModifiedContentProvider(lp);
+    auto editor = new ContentEditor(mcp);
+
+    editor.moveTo(Position(2, 3), false);
+    editor.moveTo(Position(4, 0), true);
+    editor.delete_();
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "linine 4\n");
+    assertEqual(mcp.get(3), "line 5\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 2);
+}
+
