@@ -40,8 +40,15 @@ public:
          ModifiedContentProvider mcp,
          ContentEditor editor)
     {
-        super(x, y, width, height, 100, 100, mcp);
+        super(x, y, width, height, 0, 0, mcp);
+        updateScrollLimits();
         m_editor = editor;
+    }
+
+    private void updateScrollLimits()
+    {
+        m_maxScrollPositionX = m_cp.getContentWidth() - m_width;
+        m_maxScrollPositionY = m_cp.getContentHeight() - m_height;
     }
 
     bool handleKeyboardInput(int ch)
@@ -59,28 +66,35 @@ public:
             m_editor.moveTo(Position(m_cursor_y, m_cursor_x), false);
             break;
         case KEY_UP:
-            m_cursor_y--;
-            m_editor.moveTo(Position(m_cursor_y, m_cursor_x), false);
-
-            auto distanceOffScreen = m_scrollPositionY - m_cursor_y;
-            if(distanceOffScreen > 0)
+            if(m_cursor_y > 0)
             {
-                scrollY(-distanceOffScreen);
+                m_cursor_y--;
+                m_editor.moveTo(Position(m_cursor_y, m_cursor_x), false);
+
+                auto distanceOffScreen = m_scrollPositionY - m_cursor_y;
+                if(distanceOffScreen > 0)
+                {
+                    scrollY(-distanceOffScreen);
+                }
             }
             break;
         case KEY_DOWN:
-            m_cursor_y++;
-            m_editor.moveTo(Position(m_cursor_y, m_cursor_x), false);
-
-            auto distanceOffScreen = m_cursor_y - m_height - m_scrollPositionY + 1;
-            if(distanceOffScreen > 0)
+            if(m_cursor_y < m_maxScrollPositionY + m_height - 1)
             {
-                scrollY(distanceOffScreen);
+                m_cursor_y++;
+                m_editor.moveTo(Position(m_cursor_y, m_cursor_x), false);
+
+                auto distanceOffScreen = m_cursor_y - m_height - m_scrollPositionY + 1;
+                if(distanceOffScreen > 0)
+                {
+                    scrollY(distanceOffScreen);
+                }
             }
             break;
         case KEY_DC:
             m_editor.delete_();
-            drawMissingLines(0, 0, m_height);
+            updateScrollLimits();
+            drawMissingLines(m_scrollPositionY, 0, m_height);
             break;
         default:
             handled = false;
@@ -89,6 +103,8 @@ public:
 
         return handled;
     }
+
+
 
     /* Redraws content */
     override void redraw()
