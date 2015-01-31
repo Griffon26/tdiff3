@@ -117,6 +117,12 @@ public:
                     newPos.character = min(newPos.character, m_mcp.get(newPos.line).lengthInColumns(true) - 1);
                 }
                 break;
+            case Movement.LINEHOME:
+                newPos.character = 0;
+                break;
+            case Movement.LINEEND:
+                newPos.character = m_mcp.get(m_currentPos.line).lengthInColumns(true) - 1;
+                break;
             default:
                 assert(false);
         }

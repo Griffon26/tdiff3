@@ -66,6 +66,12 @@ public:
         case KEY_DOWN:
             m_editor.move(ContentEditor.Movement.DOWN, false);
             break;
+        case KEY_HOME:
+            m_editor.move(ContentEditor.Movement.LINEHOME, false);
+            break;
+        case KEY_END:
+            m_editor.move(ContentEditor.Movement.LINEEND, false);
+            break;
         case KEY_DC:
             m_editor.delete_();
             updateScrollLimits();
