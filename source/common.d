@@ -19,7 +19,95 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+import std.c.locale;
+import std.c.stddef;
 import std.container;
+import std.utf;
+
+import myassert;
+
+extern (C) int wcwidth(wchar_t c);
+
+int lengthInColumns(string s)
+{
+    int nrOfColumns = 0;
+
+    validate(s);
+
+    foreach(dchar c; byDchar(s))
+    {
+        auto width = (c == '\n') ? 1 : wcwidth(c);
+        if(width != -1)
+        {
+            nrOfColumns += width;
+        }
+    }
+
+    return nrOfColumns;
+}
+
+string substringColumns(string s, int startColumn, int endColumn)
+{
+    size_t startIndex;
+    int columnsToSkip = startColumn;
+    while(columnsToSkip > 0)
+    {
+        dchar c = decode(s, startIndex);
+        auto width = (c == '\n') ? 1 : wcwidth(c);
+        if(width != -1)
+        {
+            columnsToSkip -= width;
+        }
+    }
+    // TODO: fix this for chars that need multiple columns
+    assert(columnsToSkip == 0);
+
+    size_t endIndex = startIndex;
+    columnsToSkip = endColumn - startColumn;
+    while(columnsToSkip > 0)
+    {
+        size_t prevIndex = endIndex;
+        dchar c = decode(s, endIndex);
+        auto width = (c == '\n') ? 1 : wcwidth(c);
+        if(width != -1)
+        {
+            columnsToSkip -= width;
+        }
+    }
+    // TODO: fix this for chars that need multiple columns
+    assert(columnsToSkip == 0);
+
+    return s[startIndex..endIndex];
+}
+
+unittest
+{
+
+    string one_byte_one_column = "a";
+    //dchar one_byte_two_columns = '';
+    string two_bytes_one_column = "é";
+    //dchar two_bytes_two_columns = '';
+    string three_bytes_one_column = "€";
+    string three_bytes_two_columns = "\uFF04";   // full-width dollar sign
+    //dchar four_bytes_one_column = '';
+    string four_bytes_two_columns = "\U00020000";    // CJK ...
+
+    setlocale(LC_ALL, "");
+
+    assertEqual(substringColumns("." ~ one_byte_one_column ~ ".", 1, 2), one_byte_one_column);
+    assertEqual(substringColumns("." ~ two_bytes_one_column ~ ".", 1, 2), two_bytes_one_column);
+    assertEqual(substringColumns("." ~ three_bytes_one_column ~ ".", 1, 2), three_bytes_one_column);
+
+    assertEqual(substringColumns("." ~ three_bytes_two_columns ~ ".", 1, 3), three_bytes_two_columns);
+    assertEqual(substringColumns("." ~ four_bytes_two_columns ~ ".", 1, 3), four_bytes_two_columns);
+
+    assertEqual(substringColumns("." ~ one_byte_one_column ~ "a.", 2, 3), "a");
+    assertEqual(substringColumns("." ~ two_bytes_one_column ~ "a.", 2, 3), "a");
+    assertEqual(substringColumns("." ~ three_bytes_one_column ~ "a.", 2, 3), "a");
+
+    assertEqual(substringColumns("." ~ three_bytes_two_columns ~ "a.", 3, 4), "a");
+    assertEqual(substringColumns("." ~ four_bytes_two_columns ~ "a.", 3, 4), "a");
+}
 
 struct Diff
 {

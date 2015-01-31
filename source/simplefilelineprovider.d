@@ -21,35 +21,14 @@
 
 import std.algorithm;
 import std.array;
-import std.c.stddef;
 import std.conv;
 import std.file;
 import std.stdio;
 import std.typecons;
-import std.utf;
 
+import common;
 import ilineprovider;
 
-extern (C) int wcwidth(wchar_t c);
-
-int getLengthInColumns(string s)
-{
-    int nrOfColumns = 0;
-
-    validate(s);
-
-
-    foreach(dchar c; byDchar(s))
-    {
-        int width = wcwidth(c);
-        if(width != -1)
-        {
-            nrOfColumns += width;
-        }
-    }
-
-    return nrOfColumns;
-}
 
 
 synchronized class SimpleFileLineProvider: ILineProvider
@@ -105,7 +84,7 @@ synchronized class SimpleFileLineProvider: ILineProvider
                 lastpos = to!int(content.length);
                 break;
             }
-            m_maxWidth = max(m_maxWidth, getLengthInColumns(lines[i]));
+            m_maxWidth = max(m_maxWidth, lines[i].lengthInColumns);
         }
 
         /* line storage shouldn't be larger than the number of lines in the content */

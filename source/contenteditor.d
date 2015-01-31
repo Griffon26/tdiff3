@@ -21,6 +21,7 @@
 
 import std.algorithm;
 
+import common;
 import modifiedcontentprovider;
 import myassert;
 
@@ -83,13 +84,14 @@ public:
              * need to create an edited version of that line */
             if(firstPos.character != 0)
             {
-                modifiedLineAtBeginning = m_le.get(firstPos.line)[0..firstPos.character];
+                modifiedLineAtBeginning = m_le.get(firstPos.line).substringColumns(0, firstPos.character);
             }
 
             /* If the selection ends at the last position of a line, nothing remains to be added to the edited line */
-            if(lastPos.character != m_le.get(lastPos.line).length - 1)
+            auto lastLineColumns = m_le.get(lastPos.line).lengthInColumns;
+            if(lastPos.character != lastLineColumns - 1)
             {
-                modifiedLineAtEnd = m_le.get(lastPos.line)[lastPos.character + 1..$];
+                modifiedLineAtEnd = m_le.get(lastPos.line).substringColumns(lastPos.character + 1, lastLineColumns);
             }
 
             if(modifiedLineAtBeginning.length == 0 && modifiedLineAtEnd.length == 0)
@@ -119,16 +121,16 @@ public:
             mod.editedLineCount = 1;
 
             auto originalLine = m_le.get(m_currentPos.line);
+            auto originalLineColumns = originalLine.lengthInColumns;
 
-            if(m_currentPos.character == originalLine.length - 1)
+            if(m_currentPos.character == originalLineColumns - 1)
             {
-                assertEqual(originalLine[$ - 1], '\n');
-                mod.lines = [ originalLine[0..m_currentPos.character] ~ m_le.get(m_currentPos.line + 1) ];
+                mod.lines = [ originalLine.substringColumns(0, m_currentPos.character) ~ m_le.get(m_currentPos.line + 1) ];
                 mod.originalLineCount = 2;
             }
             else
             {
-                mod.lines = [ originalLine[0..m_currentPos.character] ~ originalLine[m_currentPos.character + 1..$] ];
+                mod.lines = [ originalLine.substringColumns(0, m_currentPos.character) ~ originalLine.substringColumns(m_currentPos.character + 1, originalLineColumns) ];
             }
             m_le.applyModification(mod);
         }
