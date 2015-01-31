@@ -31,9 +31,6 @@ class EditableContentPane: ContentPane
 private:
     ContentEditor m_editor;
 
-    int m_cursor_x;
-    int m_cursor_y;
-
 public:
     this(int x, int y,
          int width, int height,
@@ -58,38 +55,16 @@ public:
         switch(ch)
         {
         case KEY_LEFT:
-            m_cursor_x--;
-            m_editor.moveTo(Position(m_cursor_y, m_cursor_x), false);
+            m_editor.move(ContentEditor.Movement.LEFT, false);
             break;
         case KEY_RIGHT:
-            m_cursor_x++;
-            m_editor.moveTo(Position(m_cursor_y, m_cursor_x), false);
+            m_editor.move(ContentEditor.Movement.RIGHT, false);
             break;
         case KEY_UP:
-            if(m_cursor_y > 0)
-            {
-                m_cursor_y--;
-                m_editor.moveTo(Position(m_cursor_y, m_cursor_x), false);
-
-                auto distanceOffScreen = m_scrollPositionY - m_cursor_y;
-                if(distanceOffScreen > 0)
-                {
-                    scrollY(-distanceOffScreen);
-                }
-            }
+            m_editor.move(ContentEditor.Movement.UP, false);
             break;
         case KEY_DOWN:
-            if(m_cursor_y < m_maxScrollPositionY + m_height - 1)
-            {
-                m_cursor_y++;
-                m_editor.moveTo(Position(m_cursor_y, m_cursor_x), false);
-
-                auto distanceOffScreen = m_cursor_y - m_height - m_scrollPositionY + 1;
-                if(distanceOffScreen > 0)
-                {
-                    scrollY(distanceOffScreen);
-                }
-            }
+            m_editor.move(ContentEditor.Movement.DOWN, false);
             break;
         case KEY_DC:
             m_editor.delete_();
@@ -101,6 +76,27 @@ public:
             break;
         }
 
+
+        int relativeCursorPositionX = m_editor.getCursorPosition().character - m_scrollPositionX;
+        if(relativeCursorPositionX < 0)
+        {
+            scrollX(relativeCursorPositionX);
+        }
+        else if(relativeCursorPositionX > (m_width - 1))
+        {
+            scrollX(relativeCursorPositionX - (m_width - 1));
+        }
+
+        int relativeCursorPositionY = m_editor.getCursorPosition().line - m_scrollPositionY;
+        if(relativeCursorPositionY < 0)
+        {
+            scrollY(relativeCursorPositionY);
+        }
+        else if(relativeCursorPositionY > (m_height - 1))
+        {
+            scrollY(relativeCursorPositionY - (m_height - 1));
+        }
+
         return handled;
     }
 
@@ -109,7 +105,8 @@ public:
     /* Redraws content */
     override void redraw()
     {
-        wmove(m_pad, m_cursor_y - m_scrollPositionY, m_cursor_x);
+        auto pos = m_editor.getCursorPosition();
+        wmove(m_pad, pos.line - m_scrollPositionY, pos.character);
         super.redraw();
     }
 }

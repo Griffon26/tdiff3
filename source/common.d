@@ -28,7 +28,25 @@ import myassert;
 
 extern (C) int wcwidth(wchar_t c);
 
-int lengthInColumns(string s)
+int customWcWidth(wchar_t c, bool acceptUnprintable)
+{
+    auto width = (c == '\n') ? 1 : wcwidth(c);
+    if(width == -1)
+    {
+        if(acceptUnprintable)
+        {
+            width = 1;
+        }
+        else
+        {
+            // TODO
+            assert(false);
+        }
+    }
+    return width;
+}
+
+int lengthInColumns(string s, bool acceptUnprintable)
 {
     int nrOfColumns = 0;
 
@@ -36,7 +54,7 @@ int lengthInColumns(string s)
 
     foreach(dchar c; byDchar(s))
     {
-        auto width = (c == '\n') ? 1 : wcwidth(c);
+        auto width = customWcWidth(c, acceptUnprintable);
         if(width != -1)
         {
             nrOfColumns += width;
@@ -46,24 +64,38 @@ int lengthInColumns(string s)
     return nrOfColumns;
 }
 
+unittest
+{
+    string one_byte_one_column = "a";
+    //dchar one_byte_two_columns = '';
+    string two_bytes_one_column = "é";
+    //dchar two_bytes_two_columns = '';
+    string three_bytes_one_column = "€";
+    string three_bytes_two_columns = "\uFF04";   // full-width dollar sign
+    //dchar four_bytes_one_column = '';
+    string four_bytes_two_columns = "\U00020000";    // <CJK Ideograph Extension B, First>
+
+    // For the moment this is unprintable because glibc doesn't support it.
+    string four_bytes_unprintable = "\U0001F600";    // "GRINNING FACE"
+
+    setlocale(LC_ALL, "");
+
+    assertEqual(lengthInColumns(one_byte_one_column, false), 1);
+    assertEqual(lengthInColumns(two_bytes_one_column, false), 1);
+    assertEqual(lengthInColumns(three_bytes_one_column, false), 1);
+
+    assertEqual(lengthInColumns(three_bytes_two_columns, false), 2);
+    assertEqual(lengthInColumns(four_bytes_two_columns, false), 2);
+
+    assertEqual(lengthInColumns(four_bytes_unprintable, true), 1);
+}
+
 private size_t skipColumns(string s, size_t startIndex, int columnsToSkip, bool acceptUnprintable)
 {
     while(columnsToSkip > 0)
     {
         dchar c = decode(s, startIndex);
-        auto width = (c == '\n') ? 1 : wcwidth(c);
-        if(width == -1)
-        {
-            if(acceptUnprintable)
-            {
-                width = 1;
-            }
-            else
-            {
-                // TODO
-                assert(false);
-            }
-        }
+        auto width = customWcWidth(c, acceptUnprintable);
         if(width != -1)
         {
             columnsToSkip -= width;

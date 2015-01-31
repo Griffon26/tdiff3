@@ -84,7 +84,7 @@ synchronized class SimpleFileLineProvider: ILineProvider
                 lastpos = to!int(content.length);
                 break;
             }
-            m_maxWidth = max(m_maxWidth, lines[i].lengthInColumns);
+            m_maxWidth = max(m_maxWidth, lines[i].lengthInColumns(true));
         }
 
         /* line storage shouldn't be larger than the number of lines in the content */

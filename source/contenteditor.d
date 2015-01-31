@@ -33,12 +33,26 @@ private:
     Position m_currentPos; /* also the end of the selection */
 
     string m_copyPasteBuffer;
-    ModifiedContentProvider m_le;
+    ModifiedContentProvider m_mcp;
 
 public:
-    this(ModifiedContentProvider le)
+    enum Movement
     {
-        m_le = le;
+        UP,
+        DOWN,
+        LEFT,
+        RIGHT,
+        PAGEUP,
+        PAGEDOWN,
+        LINEHOME,
+        LINEEND,
+        FILEHOME,
+        FILEEND
+    }
+
+    this(ModifiedContentProvider mcp)
+    {
+        m_mcp = mcp;
     }
 
     /* Editor operations */
@@ -52,20 +66,71 @@ public:
         }
         else
         {
-            if(!m_selectionActive)
+            if(newPos != m_currentPos)
             {
-                m_selectionActive = true;
-                m_selectionBegin = m_currentPos;
-            }
-            m_currentPos = newPos;
+                if(!m_selectionActive)
+                {
+                    m_selectionActive = true;
+                    m_selectionBegin = m_currentPos;
+                }
+                m_currentPos = newPos;
 
-            /* Reducing the selection to 0 chars destroys it */
-            if(m_selectionBegin == m_currentPos)
-            {
-                m_selectionActive = false;
+                /* Reducing the selection to 0 chars destroys it */
+                if(m_selectionBegin == m_currentPos)
+                {
+                    m_selectionActive = false;
+                }
             }
         }
     }
+
+    bool move(Movement mv, bool withSelection)
+    {
+        Position oldPos = m_currentPos;
+        Position newPos = m_currentPos;
+
+        switch(mv)
+        {
+            case Movement.RIGHT:
+                if(m_currentPos.character < m_mcp.get(m_currentPos.line).lengthInColumns(true) - 1)
+                {
+                    newPos.character++;
+                }
+                break;
+            case Movement.LEFT:
+                if(m_currentPos.character > 0)
+                {
+                    newPos.character--;
+                }
+                break;
+            case Movement.UP:
+                if(m_currentPos.line > 0)
+                {
+                    newPos.line--;
+                    newPos.character = min(newPos.character, m_mcp.get(newPos.line).lengthInColumns(true) - 1);
+                }
+                break;
+            case Movement.DOWN:
+                if(m_currentPos.line < m_mcp.getContentHeight() - 1)
+                {
+                    newPos.line++;
+                    newPos.character = min(newPos.character, m_mcp.get(newPos.line).lengthInColumns(true) - 1);
+                }
+                break;
+            default:
+                assert(false);
+        }
+
+        moveTo(newPos, withSelection);
+
+        return newPos != oldPos;
+    }
+
+    Position getCursorPosition()
+    {
+        return m_currentPos;
+    }
+
     void delete_()
     {
         if(m_selectionActive)
@@ -84,14 +149,14 @@ public:
              * need to create an edited version of that line */
             if(firstPos.character != 0)
             {
-                modifiedLineAtBeginning = m_le.get(firstPos.line).substringColumns(0, firstPos.character, true);
+                modifiedLineAtBeginning = m_mcp.get(firstPos.line).substringColumns(0, firstPos.character, true);
             }
 
             /* If the selection ends at the last position of a line, nothing remains to be added to the edited line */
-            auto lastLineColumns = m_le.get(lastPos.line).lengthInColumns;
+            auto lastLineColumns = m_mcp.get(lastPos.line).lengthInColumns(true);
             if(lastPos.character != lastLineColumns - 1)
             {
-                modifiedLineAtEnd = m_le.get(lastPos.line).substringColumns(lastPos.character + 1, lastLineColumns, true);
+                modifiedLineAtEnd = m_mcp.get(lastPos.line).substringColumns(lastPos.character + 1, lastLineColumns, true);
             }
 
             if(modifiedLineAtBeginning.length == 0 && modifiedLineAtEnd.length == 0)
@@ -103,7 +168,7 @@ public:
                 /* If the end of the line was completely deleted, then the next line will move up */
                 if(modifiedLineAtEnd.length == 0)
                 {
-                    modifiedLineAtEnd = m_le.get(lastPos.line + 1);
+                    modifiedLineAtEnd = m_mcp.get(lastPos.line + 1);
                     mod.originalLineCount++;
                 }
 
@@ -111,7 +176,7 @@ public:
                 mod.editedLineCount = 1;
             }
 
-            m_le.applyModification(mod);
+            m_mcp.applyModification(mod);
         }
         else
         {
@@ -120,19 +185,19 @@ public:
             mod.originalLineCount = 1;
             mod.editedLineCount = 1;
 
-            auto originalLine = m_le.get(m_currentPos.line);
-            auto originalLineColumns = originalLine.lengthInColumns;
+            auto originalLine = m_mcp.get(m_currentPos.line);
+            auto originalLineColumns = originalLine.lengthInColumns(true);
 
             if(m_currentPos.character == originalLineColumns - 1)
             {
-                mod.lines = [ originalLine.substringColumns(0, m_currentPos.character, true) ~ m_le.get(m_currentPos.line + 1) ];
+                mod.lines = [ originalLine.substringColumns(0, m_currentPos.character, true) ~ m_mcp.get(m_currentPos.line + 1) ];
                 mod.originalLineCount = 2;
             }
             else
             {
                 mod.lines = [ originalLine.substringColumns(0, m_currentPos.character, true) ~ originalLine.substringColumns(m_currentPos.character + 1, originalLineColumns, true) ];
             }
-            m_le.applyModification(mod);
+            m_mcp.applyModification(mod);
         }
     }
     void insertText(string fragment)
@@ -142,7 +207,7 @@ public:
         mod.originalLineCount = 1;
         mod.editedLineCount = 1;
         mod.lines = [fragment];
-        m_le.applyModification(mod);
+        m_mcp.applyModification(mod);
     }
     void cut()
     {
