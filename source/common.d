@@ -46,14 +46,24 @@ int lengthInColumns(string s)
     return nrOfColumns;
 }
 
-string substringColumns(string s, int startColumn, int endColumn)
+private size_t skipColumns(string s, size_t startIndex, int columnsToSkip, bool acceptUnprintable)
 {
-    size_t startIndex;
-    int columnsToSkip = startColumn;
     while(columnsToSkip > 0)
     {
         dchar c = decode(s, startIndex);
         auto width = (c == '\n') ? 1 : wcwidth(c);
+        if(width == -1)
+        {
+            if(acceptUnprintable)
+            {
+                width = 1;
+            }
+            else
+            {
+                // TODO
+                assert(false);
+            }
+        }
         if(width != -1)
         {
             columnsToSkip -= width;
@@ -62,20 +72,15 @@ string substringColumns(string s, int startColumn, int endColumn)
     // TODO: fix this for chars that need multiple columns
     assert(columnsToSkip == 0);
 
-    size_t endIndex = startIndex;
-    columnsToSkip = endColumn - startColumn;
-    while(columnsToSkip > 0)
-    {
-        size_t prevIndex = endIndex;
-        dchar c = decode(s, endIndex);
-        auto width = (c == '\n') ? 1 : wcwidth(c);
-        if(width != -1)
-        {
-            columnsToSkip -= width;
-        }
-    }
-    // TODO: fix this for chars that need multiple columns
-    assert(columnsToSkip == 0);
+    return startIndex;
+}
+
+string substringColumns(string s, int startColumn, int endColumn, bool acceptUnprintable)
+{
+    size_t startIndex, endIndex;
+
+    startIndex = skipColumns(s, 0, startColumn, acceptUnprintable);
+    endIndex = skipColumns(s, startIndex, endColumn - startColumn, acceptUnprintable);
 
     return s[startIndex..endIndex];
 }
@@ -90,23 +95,31 @@ unittest
     string three_bytes_one_column = "€";
     string three_bytes_two_columns = "\uFF04";   // full-width dollar sign
     //dchar four_bytes_one_column = '';
-    string four_bytes_two_columns = "\U00020000";    // CJK ...
+    string four_bytes_two_columns = "\U00020000";    // <CJK Ideograph Extension B, First>
+
+    // For the moment this is unprintable because glibc doesn't support it.
+    string four_bytes_unprintable = "\U0001F600";    // "GRINNING FACE"
 
     setlocale(LC_ALL, "");
 
-    assertEqual(substringColumns("." ~ one_byte_one_column ~ ".", 1, 2), one_byte_one_column);
-    assertEqual(substringColumns("." ~ two_bytes_one_column ~ ".", 1, 2), two_bytes_one_column);
-    assertEqual(substringColumns("." ~ three_bytes_one_column ~ ".", 1, 2), three_bytes_one_column);
+    assertEqual(substringColumns("." ~ one_byte_one_column ~ ".", 1, 2, false), one_byte_one_column);
+    assertEqual(substringColumns("." ~ two_bytes_one_column ~ ".", 1, 2, false), two_bytes_one_column);
+    assertEqual(substringColumns("." ~ three_bytes_one_column ~ ".", 1, 2, false), three_bytes_one_column);
 
-    assertEqual(substringColumns("." ~ three_bytes_two_columns ~ ".", 1, 3), three_bytes_two_columns);
-    assertEqual(substringColumns("." ~ four_bytes_two_columns ~ ".", 1, 3), four_bytes_two_columns);
+    assertEqual(substringColumns("." ~ three_bytes_two_columns ~ ".", 1, 3, false), three_bytes_two_columns);
+    assertEqual(substringColumns("." ~ four_bytes_two_columns ~ ".", 1, 3, false), four_bytes_two_columns);
 
-    assertEqual(substringColumns("." ~ one_byte_one_column ~ "a.", 2, 3), "a");
-    assertEqual(substringColumns("." ~ two_bytes_one_column ~ "a.", 2, 3), "a");
-    assertEqual(substringColumns("." ~ three_bytes_one_column ~ "a.", 2, 3), "a");
+    assertEqual(substringColumns("." ~ four_bytes_unprintable ~ "a.", 1, 2, true), four_bytes_unprintable);
 
-    assertEqual(substringColumns("." ~ three_bytes_two_columns ~ "a.", 3, 4), "a");
-    assertEqual(substringColumns("." ~ four_bytes_two_columns ~ "a.", 3, 4), "a");
+
+    assertEqual(substringColumns("." ~ one_byte_one_column ~ "a.", 2, 3, false), "a");
+    assertEqual(substringColumns("." ~ two_bytes_one_column ~ "a.", 2, 3, false), "a");
+    assertEqual(substringColumns("." ~ three_bytes_one_column ~ "a.", 2, 3, false), "a");
+
+    assertEqual(substringColumns("." ~ three_bytes_two_columns ~ "a.", 3, 4, false), "a");
+    assertEqual(substringColumns("." ~ four_bytes_two_columns ~ "a.", 3, 4, false), "a");
+
+    assertEqual(substringColumns("." ~ four_bytes_unprintable ~ "a.", 2, 3, true), "a");
 }
 
 struct Diff

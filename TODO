@@ -12,6 +12,9 @@ functionality.
   - add scrollbar (read-only, just to show where you are in the file)
   - create editable window (text only edited on screen, not backed by memory/file)
 
+    general:
+    - limit cursor movement to line content
+
     supported keys:
     - arrows for navigation
     - regular chars
@@ -29,6 +32,10 @@ functionality.
     - shift-home/end -> select to beginning/end of line
     - ctrl-shift-home/end -> select to beginning/end of file
     - shift-page up/down -> select to prev/next page
+
+    support for full-width characters:
+    - move cursor 2 places with one keypress (this should make it impossible to
+      start typing/deleting while in the middle of a full-width char)
 
   - implement memory/file storage for editable window
     - only store edits wrt the original content
