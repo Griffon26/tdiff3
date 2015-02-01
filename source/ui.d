@@ -26,6 +26,7 @@
 module ui;
 
 import deimos.ncurses.curses;
+import std.algorithm;
 
 import contenteditor;
 import editablecontentpane;
@@ -74,7 +75,13 @@ public:
     {
         int max_x, max_y;
         getmaxyx(stdscr, max_y, max_x);
-        setPosition(0, 0, max_x + 1, max_y + 1);
+
+        clear();
+
+        int width = max(max_x + 1, 30);
+        int height = max(max_y + 1, 10);
+
+        setPosition(0, 0, width, height);
         refresh();
     }
 
