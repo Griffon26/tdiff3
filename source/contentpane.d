@@ -63,6 +63,15 @@ public:
         drawMissingLines(0, 0, height);
     }
 
+    protected void updateScrollLimits()
+    {
+        m_maxScrollPositionX = m_cp.getContentWidth() - m_width;
+        m_maxScrollPositionY = m_cp.getContentHeight() - m_height;
+
+        m_scrollPositionX = min(m_scrollPositionX, m_maxScrollPositionX);
+        m_scrollPositionY = min(m_scrollPositionY, m_maxScrollPositionY);
+    }
+
     void drawMissingLines(int contentLineOffset, int displayLineOffset, int count)
     {
         int firstLine = contentLineOffset;
@@ -127,6 +136,16 @@ public:
         drawMissingLines(m_scrollPositionY + missingLinesOffset, missingLinesOffset, missingLinesCount);
     }
 
+    void resize(int width, int height)
+    {
+        m_width = width;
+        m_height = height;
+
+        updateScrollLimits();
+
+        wresize(m_pad, m_height, m_cp.getContentWidth());
+        drawMissingLines(m_scrollPositionY, 0, m_height);
+    }
 
     /* Redraws content */
     void redraw()

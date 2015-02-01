@@ -42,12 +42,6 @@ public:
         m_editor = editor;
     }
 
-    private void updateScrollLimits()
-    {
-        m_maxScrollPositionX = m_cp.getContentWidth() - m_width;
-        m_maxScrollPositionY = m_cp.getContentHeight() - m_height;
-    }
-
     bool handleKeyboardInput(int ch)
     {
         bool handled = true;
@@ -76,6 +70,12 @@ public:
             m_editor.delete_();
             updateScrollLimits();
             drawMissingLines(m_scrollPositionY, 0, m_height);
+            break;
+        case KEY_PPAGE:
+            resize(m_width, m_height - 10);
+            break;
+        case KEY_NPAGE:
+            resize(m_width, m_height + 10);
             break;
         default:
             handled = false;
