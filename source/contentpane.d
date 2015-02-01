@@ -27,6 +27,7 @@ module contentpane;
 
 import std.algorithm;
 import std.math;
+import std.stdio;
 import std.string;
 
 import deimos.ncurses.curses;
@@ -53,23 +54,11 @@ protected:
     int m_scrollPositionY = 0;
 
 public:
-    this(int x, int y,
-         int width, int height,
-         int maxScrollPositionX, int maxScrollPositionY,
-         IContentProvider cp)
+    this(IContentProvider cp)
     {
         m_cp = cp;
 
-        m_x = x;
-        m_y = y;
-        m_width = width;
-        m_height = height;
-        m_maxScrollPositionX = maxScrollPositionX;
-        m_maxScrollPositionY = maxScrollPositionY;
-
-        m_pad = newpad(height, m_cp.getContentWidth());
-
-        drawMissingLines(0, 0, height);
+        m_pad = newpad(10, 10);
     }
 
     protected void updateScrollLimits()
@@ -145,8 +134,10 @@ public:
         drawMissingLines(m_scrollPositionY + missingLinesOffset, missingLinesOffset, missingLinesCount);
     }
 
-    void resize(int width, int height)
+    void setPosition(int x, int y, int width, int height)
     {
+        m_x = x;
+        m_y = y;
         m_width = width;
         m_height = height;
 
@@ -159,6 +150,12 @@ public:
     /* Redraws content */
     void redraw()
     {
+        assert(m_width != 0);
+        assert(m_height != 0);
+
+        //endwin();
+        //writefln("Redrawing window from (%d,%d) to (%d,%d)", m_x, m_y, m_x + m_width - 1, m_y + m_height - 1);
+
         prefresh(m_pad, 0, m_scrollPositionX, m_y, m_x, m_y + m_height - 1, m_x + m_width - 1);
     }
 }

@@ -51,12 +51,10 @@ private:
     ContentEditor m_editor;
 
 public:
-    this(int x, int y,
-         int width, int height,
-         ModifiedContentProvider mcp,
+    this(ModifiedContentProvider mcp,
          ContentEditor editor)
     {
-        super(x, y, width, height, 0, 0, mcp);
+        super(mcp);
         updateScrollLimits();
         m_editor = editor;
     }
@@ -89,12 +87,6 @@ public:
             m_editor.delete_();
             updateScrollLimits();
             drawMissingLines(m_scrollPositionY, 0, m_height);
-            break;
-        case KEY_PPAGE:
-            resize(m_width, m_height - 10);
-            break;
-        case KEY_NPAGE:
-            resize(m_width, m_height + 10);
             break;
         default:
             handled = false;

@@ -43,13 +43,15 @@ private:
     ContentPane[3] m_lineNumberPanes;
     ContentPane[3] m_inputPanes;
 
+    int m_lineNumberWidth;
+
     int scrollBarWidth = 1;
     int borderWidth = 1;
     int diffStatusWidth = 1;
     int nrOfPanes = 3;
 
 public:
-    this(int x, int y, int width, int height, IContentProvider[3] cps, IContentProvider[3] lnps)
+    this(IContentProvider[3] cps, IContentProvider[3] lnps)
     {
         assert(cps[0].getContentHeight() == cps[1].getContentHeight() &&
                cps[0].getContentHeight() == cps[2].getContentHeight());
@@ -59,8 +61,18 @@ public:
 
         assert(lnps[0].getContentWidth() == lnps[1].getContentWidth() &&
                lnps[0].getContentWidth() == lnps[2].getContentWidth());
-        int lineNumberWidth = lnps[0].getContentWidth();
 
+        m_lineNumberWidth = lnps[0].getContentWidth();
+
+        for(int i = 0; i < nrOfPanes; i++)
+        {
+            m_lineNumberPanes[i] = new ContentPane(lnps[i]);
+            m_inputPanes[i] = new ContentPane(cps[i]);
+        }
+    }
+
+    void setPosition(int x, int y, int width, int height)
+    {
         /* Draw a box around the input panes */
         mvhline(y, x, ACS_HLINE, width - 1);
         mvvline(y, x, ACS_VLINE, height - 1);
@@ -73,12 +85,9 @@ public:
         mvaddch(y + height - 1, x + width - 1, ACS_LRCORNER);
 
         int summedPaneWidth = width - scrollBarWidth -
-                              nrOfPanes * (borderWidth + lineNumberWidth + diffStatusWidth) -
+                              nrOfPanes * (borderWidth + m_lineNumberWidth + diffStatusWidth) -
                               borderWidth;
         int inputPaneHeight = height - 2 * borderWidth;
-
-        int maxScrollPositionX = cps[0].getContentWidth() - (summedPaneWidth + 2) / 3;
-        int maxScrollPositionY = cps[0].getContentHeight() - inputPaneHeight;
 
         int remainingPaneWidth = summedPaneWidth;
         int paneOffset = x;
@@ -96,23 +105,15 @@ public:
             paneOffset += borderWidth;
 
             /* Draw line numbers */
-            m_lineNumberPanes[i] = new ContentPane(paneOffset, y + 1,
-                                                   lineNumberWidth, inputPaneHeight,
-                                                   0, maxScrollPositionY,
-                                                   lnps[i]);
-            paneOffset += lineNumberWidth + diffStatusWidth;
+            m_lineNumberPanes[i].setPosition(paneOffset, y + 1, m_lineNumberWidth, inputPaneHeight);
+            paneOffset += m_lineNumberWidth + diffStatusWidth;
 
             /* Draw file content */
-            m_inputPanes[i] = new ContentPane(paneOffset, y + 1,
-                                              paneWidth, inputPaneHeight,
-                                            maxScrollPositionX, maxScrollPositionY,
-                                            cps[i]);
-
+            m_inputPanes[i].setPosition(paneOffset, y + 1, paneWidth, inputPaneHeight);
             paneOffset += paneWidth;
 
             remainingPaneWidth -= paneWidth;
         }
-
     }
 
     void scrollX(int n)

@@ -25,7 +25,6 @@
  */
 module app;
 
-import core.thread;
 import std.algorithm;
 import std.array;
 import std.c.locale;
@@ -34,20 +33,16 @@ import std.math;
 import std.stdio;
 import std.string;
 
-import deimos.ncurses.curses;
-
 import common;
 import diff;
 import diff3contentprovider;
-import contenteditor;
-import editablecontentpane;
 import gnudiff;
 import icontentprovider;
 import ilineprovider;
-import inputpanes;
 import linenumbercontentprovider;
 import modifiedcontentprovider;
 import simplefilelineprovider;
+import ui;
 
 void printDiff3List(Diff3LineList d3ll,
                     shared ILineProvider lpA,
@@ -151,13 +146,6 @@ void main()
     int lineNumberWidth = to!int(trunc(log10(nrOfLines))) + 1;
     writefln("nr of lines in d3la is %d\n", nrOfLines);
 
-    //Thread.sleep(dur!("seconds")(5));
-
-    initscr();
-    cbreak();
-    noecho();
-    keypad(stdscr, true);
-
     IContentProvider[3] cps;
     cps[0] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 0, lps[0]);
     cps[1] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 1, lps[1]);
@@ -168,57 +156,10 @@ void main()
     lnps[1] = new LineNumberContentProvider(lineNumberWidth, nrOfLines, d3la, 1);
     lnps[2] = new LineNumberContentProvider(lineNumberWidth, nrOfLines, d3la, 2);
 
-    int input_x = 3;
-    int input_y = 5;
-    int input_width = 100;
-    int input_height = 25;
-
-    auto inputPanes = new InputPanes(input_x, input_y, input_width, input_height, cps, lnps);
-
-    int output_x = input_x;
-    int output_y = input_y + input_height + 2;
-    int output_width = input_width;
-    int output_height = input_height;
-
     auto modifiedContentProvider = new ModifiedContentProvider(lps[0]);
-    auto contentEditor = new ContentEditor(modifiedContentProvider);
-    auto editableContentPane = new EditableContentPane(output_x, output_y, output_width, output_height, modifiedContentProvider, contentEditor);
 
-    /* Refresh stdscr to make sure the static items are drawn and stdscr won't
-     * be refreshed again when getch() is called */
-    refresh();
-    inputPanes.redraw();
-    editableContentPane.redraw();
-
-    int ch = 'x';
-    while(ch != 'q')
-    {
-        ch = getch();
-
-        if(!editableContentPane.handleKeyboardInput(ch))
-        {
-            switch(ch)
-            {
-            case 'j':
-                inputPanes.scrollY(1);
-                break;
-            case 'i':
-                inputPanes.scrollY(-1);
-                break;
-            case 'k':
-                inputPanes.scrollX(-1);
-                break;
-            case 'l':
-                inputPanes.scrollX(1);
-                break;
-            default:
-                break;
-            }
-        }
-
-        inputPanes.redraw();
-        editableContentPane.redraw();
-    }
-    endwin();
+    auto ui = new Ui(cps, lnps, modifiedContentProvider);
+    ui.handleResize();
+    ui.mainLoop();
 }
 
