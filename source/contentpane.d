@@ -19,6 +19,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/**
+ * Authors: Maurice van der Pot
+ * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
+ */
+module contentpane;
+
 import std.algorithm;
 import std.math;
 import std.string;
@@ -27,6 +33,9 @@ import deimos.ncurses.curses;
 
 import icontentprovider;
 
+/**
+ * ContentPane provides a scrollable view on the content of an IContentProvider
+ */
 class ContentPane
 {
 protected:

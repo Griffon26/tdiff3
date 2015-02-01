@@ -19,6 +19,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/**
+ * Authors: Maurice van der Pot
+ * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
+ */
+module modifiedcontentprovider;
+
 import std.algorithm;
 import std.container;
 import std.string;
@@ -28,6 +34,10 @@ import icontentprovider;
 import ilineprovider;
 import myassert;
 
+/**
+ * Modification represents the result of an edit operation to content. They are
+ * passed to ModifiedContentProvider's applyModification() function.
+ */
 struct Modification
 {
     int firstLine;
@@ -73,6 +83,12 @@ struct Position
     }
 }
 
+/**
+ * ModifiedContentProvider is responsible for providing a view on the content
+ * from an ILineProvider plus modifications. When a line of content is
+ * requested, it checks its list of Modifications to see if it should return an
+ * line from the ILineProvider or instead a line from one of the modifications.
+ */
 class ModifiedContentProvider: IContentProvider
 {
 private:

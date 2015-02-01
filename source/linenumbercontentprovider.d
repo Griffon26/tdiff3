@@ -19,12 +19,24 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/**
+ * Authors: Maurice van der Pot
+ * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
+ */
+module linenumbercontentprovider;
+
 import std.typecons;
 import std.string;
 
 import common;
 import icontentprovider;
 
+/**
+ * LineNumberContentProvider is a simple content provider that provides line
+ * numbers to match the lines in a Diff3LineArray belonging to one of the input
+ * files. Which input file it will provide line numbers for is chosen when
+ * the LineNumberContentProvider is created.
+ */
 class LineNumberContentProvider: IContentProvider
 {
     int m_contentWidth;

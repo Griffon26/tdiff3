@@ -19,12 +19,23 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/**
+ * Authors: Maurice van der Pot
+ * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
+ */
+module diff3contentprovider;
+
 import std.typecons;
 
 import common;
 import icontentprovider;
 import ilineprovider;
 
+/**
+ * Diff3ContentProvider provides an IContentProvider interface for the lines
+ * in a Diff3LineArray belonging to a single file. Which file that is is
+ * selected when the Diff3ContentProvider is created.
+ */
 class Diff3ContentProvider: IContentProvider
 {
     int m_contentWidth;

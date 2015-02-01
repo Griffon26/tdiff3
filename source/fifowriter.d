@@ -19,6 +19,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/**
+ * Authors: Maurice van der Pot
+ * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
+ */
+module fifowriter;
+
 import core.thread;
 import std.algorithm;
 import std.concurrency;
@@ -46,6 +52,10 @@ struct ExitMessage
 {
 }
 
+/**
+ * FifoWriter allows writing from an ILineProvider to a fifo from a separate
+ * thread.
+ */
 class FifoWriter
 {
     private Tid m_tid;

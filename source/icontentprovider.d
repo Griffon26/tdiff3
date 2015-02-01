@@ -19,8 +19,17 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/**
+ * Authors: Maurice van der Pot
+ * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
+ */
+module icontentprovider;
+
 import std.typecons;
 
+/**
+ * IContentProvider is a line-based interface to content.
+ */
 interface IContentProvider
 {
     Nullable!string get(int line);

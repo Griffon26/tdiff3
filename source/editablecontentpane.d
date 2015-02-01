@@ -19,6 +19,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/**
+ * Authors: Maurice van der Pot
+ * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
+ */
+module editablecontentpane;
+
 import deimos.ncurses.curses;
 
 import modifiedcontentprovider;
@@ -26,6 +32,19 @@ import contenteditor;
 import contentpane;
 
 
+/**
+  * EditableContentPane handles keyboard input from ncurses and translates it
+  * into editing commands that it passes on to ContentEditor.
+  *
+  * <img src="http://yuml.me/diagram/scruffy/class/
+  *           [ContentPane]^-[EditableContentPane {bg:limegreen}],
+  *           [ContentPane]-gets content&gt;[IContentProvider],
+  *           [app]-sends keystrokes&gt;[EditableContentPane {bg:limegreen}],
+  *           [EditableContentPane {bg:limegreen}]-sends editing commands&gt;[ContentEditor],
+  *           [ContentEditor]-applies modifications&gt;[ModifiedContentProvider],
+  *           [IContentProvider]^-.-[ModifiedContentProvider]
+  *          "/>
+  */
 class EditableContentPane: ContentPane
 {
 private:

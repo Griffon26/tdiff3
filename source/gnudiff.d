@@ -19,6 +19,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/**
+ * Authors: Maurice van der Pot
+ * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
+ */
+module gnudiff;
+
 import std.algorithm;
 import std.array;
 import std.concurrency;
@@ -38,6 +44,13 @@ import myassert;
 
 const uint MAX_NR_OF_FILES = 3;
 
+/**
+ * GnuDiff performs a _diff between the data from two ILineProviders. It does
+ * this by spawning an external _diff process and having it read from named
+ * pipes that two FifoWriters will be writing to.
+ * The FifoWriters each spawn a thread, requiring the ILineProviders to be
+ * shared.
+ */
 class GnuDiff
 {
     private string m_tempdir;

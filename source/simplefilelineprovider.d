@@ -19,6 +19,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/**
+ * Authors: Maurice van der Pot
+ * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
+ */
+module simplefilelineprovider;
+
 import std.algorithm;
 import std.array;
 import std.conv;
@@ -29,8 +35,15 @@ import std.typecons;
 import common;
 import ilineprovider;
 
-
-
+/**
+ * This is a temporary implementation of a line provider that reads lines from a file.
+ * It caches the positions of line endings to avoid having to parse the entire
+ * file again and again.
+ * As the name says the implementation is very simple and just reads the entire
+ * file into memory first. This implementation will have to be replaced by one
+ * that limits the amount of memory it uses (either by caching part of the file
+ * or by using mmap).
+ */
 synchronized class SimpleFileLineProvider: ILineProvider
 {
     private string content;

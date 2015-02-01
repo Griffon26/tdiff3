@@ -19,12 +19,24 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/**
+ * Authors: Maurice van der Pot
+ * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
+ */
+module contenteditor;
+
 import std.algorithm;
 
 import common;
 import modifiedcontentprovider;
 import myassert;
 
+/**
+ * The ContentEditor is responsible for translating editing commands received
+ * from the EditableContentPane into modifications and send them to the
+ * ModifiedContentProvider. It is also responsible for maintaining the cursor
+ * position and selection state.
+ */
 class ContentEditor
 {
 private:

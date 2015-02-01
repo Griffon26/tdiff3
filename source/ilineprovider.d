@@ -19,8 +19,25 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/**
+ * Authors: Maurice van der Pot
+ * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
+ */
+module ilineprovider;
+
 import std.typecons;
 
+/**
+ * ILineProvider provides line-based access to input data.
+ * Originally the plan was to have a chain of ILineProviders that could apply
+ * filtering to data read from the input files (decoding/encoding, line
+ * preprocessing, ...).
+ * Because this chain of ILineProviders is shared between threads,
+ * ILineProvider was made synchronized. If the synchronized keyword can be
+ * avoided, then maybe this interface can be replaced by IContentProvider.
+ * The reason for having multiple threads is explained in the documentation of
+ * GnuDiff.
+ */
 synchronized interface ILineProvider
 {
     Nullable!string get(int line);
