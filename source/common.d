@@ -177,6 +177,39 @@ struct Diff
 
 alias DiffList = DList!Diff;
 
+enum DiffSelection
+{
+    A_vs_B,
+    A_vs_C,
+    B_vs_C
+}
+
+int left(DiffSelection ds)
+{
+    final switch(ds)
+    {
+    case DiffSelection.A_vs_B:
+        return 0;
+    case DiffSelection.A_vs_C:
+        return 0;
+    case DiffSelection.B_vs_C:
+        return 1;
+    }
+}
+
+int right(DiffSelection ds)
+{
+    final switch(ds)
+    {
+    case DiffSelection.A_vs_B:
+        return 1;
+    case DiffSelection.A_vs_C:
+        return 2;
+    case DiffSelection.B_vs_C:
+        return 2;
+    }
+}
+
 struct Diff3Line
 {
     int lineA = -1;
@@ -186,6 +219,10 @@ struct Diff3Line
     bool bAEqB = false;
     bool bAEqC = false;
     bool bBEqC = false;
+
+    DiffList fineAB;
+    DiffList fineAC;
+    DiffList fineBC;
 
     ref int line(int i)
     {
@@ -202,18 +239,29 @@ struct Diff3Line
         }
     }
 
-    ref bool equal(int i)
+    ref bool equal(DiffSelection diffSel)
     {
-        switch(i)
+        final switch(diffSel)
         {
-        case 0:
+        case DiffSelection.A_vs_B:
             return bAEqB;
-        case 1:
+        case DiffSelection.A_vs_C:
             return bAEqC;
-        case 2:
+        case DiffSelection.B_vs_C:
             return bBEqC;
-        default:
-            assert(false);
+        }
+    }
+
+    ref DiffList fineDiff(DiffSelection diffSel)
+    {
+        final switch(diffSel)
+        {
+        case DiffSelection.A_vs_B:
+            return fineAB;
+        case DiffSelection.A_vs_C:
+            return fineAC;
+        case DiffSelection.B_vs_C:
+            return fineBC;
         }
     }
 }

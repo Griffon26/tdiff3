@@ -129,6 +129,10 @@ void main()
 
     /* TODO: finediff */
 
+    fineDiff(diff3LineList, DiffSelection.A_vs_B, lps[0], lps[1]);
+    fineDiff(diff3LineList, DiffSelection.A_vs_C, lps[0], lps[2]);
+    fineDiff(diff3LineList, DiffSelection.B_vs_C, lps[1], lps[2]);
+
     writefln("print");
     printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
 

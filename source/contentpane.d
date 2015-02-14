@@ -59,6 +59,8 @@ public:
         m_cp = cp;
 
         m_pad = newpad(10, 10);
+        //wattron(m_pad, COLOR_PAIR(1));
+        wbkgd(m_pad, COLOR_PAIR(1));
     }
 
     protected void updateScrollLimits()
@@ -70,6 +72,17 @@ public:
         m_scrollPositionY = min(m_scrollPositionY, m_maxScrollPositionY);
     }
 
+    protected void drawMissingLine(int contentLine)
+    {
+        auto line = m_cp.get(contentLine);
+        if(line.isNull)
+        {
+            line = "\n";
+        }
+        // TODO: also get the applicable colors and print the line with them
+        wprintw(m_pad, toStringz(line));
+    }
+
     void drawMissingLines(int contentLineOffset, int displayLineOffset, int count)
     {
         int firstLine = contentLineOffset;
@@ -78,12 +91,7 @@ public:
         wmove(m_pad, displayLineOffset, 0);
         for(int i = firstLine; i <= lastLine; i++)
         {
-            auto line = m_cp.get(i);
-            if(line.isNull)
-            {
-                line = "\n";
-            }
-            wprintw(m_pad, toStringz(line));
+            drawMissingLine(i);
         }
     }
 
@@ -133,6 +141,10 @@ public:
 
         drawMissingLines(m_scrollPositionY + missingLinesOffset, missingLinesOffset, missingLinesCount);
     }
+
+    // TODO: add a setSelection function that redraws the lines that were
+    // previously selected as well as the ones that are now selected to update
+    // the colors
 
     void setPosition(int x, int y, int width, int height)
     {

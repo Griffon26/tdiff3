@@ -28,9 +28,15 @@
  */
 module diff;
 
+import std.algorithm;
+import std.array;
 import std.container;
+import std.math;
+import std.range;
 import std.stdio;
+import std.string;
 import std.typecons;
+import std.utf;
 
 import common;
 import ilineprovider;
@@ -1087,3 +1093,341 @@ void trimDiff3LineList(ref Diff3LineList d3ll,
     }
 }
 
+DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
+{
+    DiffList diffList;
+
+    auto r1 = array(line1);
+    auto r2 = array(line2);
+
+    for(;;)
+    {
+        int nofEquals = 0;
+        while(!r1.empty && !r2.empty && r1.front == r2.front)
+        {
+            r1.popFront();
+            r2.popFront();
+            nofEquals++;
+        }
+
+        bool bestValid = false;
+        int bestI1 = 0;
+        int bestI2 = 0;
+        int i1 = 0;
+        int i2 = 0;
+
+        // Look for a character that occurs in both r1 and r2 and that is closest to the current position
+        for(i1 = 0; ; i1++)
+        {
+            // Stop looking ahead in r1 if we've already found a match that is closer to the current position
+            if(i1 == r1.length || (bestValid && (i1 >= bestI1 + bestI2)))
+            {
+                break;
+            }
+            for(i2 = 0; i2 < maxSearchRange; i2++)
+            {
+                // Stop looking ahead in r2 if we've already found amatch that is closer to the current position
+                if(i2 == r2.length || (bestValid && ((i1 + i2) >= (bestI1 + bestI2))))
+                {
+                    break;
+                }
+                // If we've found a matching character and one of the following holds..
+                // - it is about as far from the previous set of matching chars in r1 as in r2
+                // - it is the last char in both r1 and r2
+                // - the next char in r1 and r2 also matches
+                else if( (r1[i1] == r2[i2]) &&
+                         ( match == 1 ||
+                           abs(i1 - i2) < 3 ||
+                           (i1 + 1 == r1.length && i2 + 1 == r2.length) ||
+                           (i1 + 1 != r1.length && i2 + 1 != r2.length && r1[i1 + 1] == r2[i2 + 1]) ) )
+                {
+                    // I don't think this can ever be false
+                    assert(i1 + i2 < bestI1 + bestI2 || !bestValid);
+                    if(i1 + i2 < bestI1 + bestI2 || !bestValid)
+                    {
+                        bestI1 = i1;
+                        bestI2 = i2;
+                        bestValid = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+
+        // The match was found using the strict search. Go back if there are non-strict
+        // matches.
+        while(bestI1 > 0 && bestI2 > 0 && r1[bestI1 - 1] == r2[bestI2 - 1])
+        {
+            bestI1--;
+            bestI2--;
+            // This should never happen, because the code makes no distinction between strict and non-strict matches
+            assert(false);
+        }
+
+        bool endReached = false;
+        if(bestValid)
+        {
+            // continue somehow
+            Diff d = Diff(nofEquals, bestI1, bestI2);
+            diffList.insertBack(d);
+
+            r1.popFrontN(bestI1);
+            r2.popFrontN(bestI2);
+        }
+        else
+        {
+            // Nothing else to match.
+            Diff d = Diff(cast(uint)nofEquals, cast(uint)r1.length, cast(uint)r2.length);
+            diffList.insertBack(d);
+
+            endReached = true;
+        }
+
+        // Sometimes the algorithm that chooses the first match unfortunately chooses
+        // a match where later actually equal parts don't match anymore.
+        // A different match could be achieved, if we start at the end.
+        // Do it, if it would be a better match.
+        int nofUnmatched = 0;
+        auto ru1 = array(line1)[0..$-r1.length];
+        auto ru2 = array(line2)[0..$-r2.length];
+
+        while(!ru1.empty && !ru2.empty && ru1.back == ru2.back)
+        {
+            nofUnmatched++;
+            ru1.popBack();
+            ru2.popBack();
+        }
+
+
+        Diff d = diffList.back;
+        if(nofUnmatched > 0)
+        {
+            // We want to go backwards the nofUnmatched elements and redo
+            // the matching
+            d = diffList.back;
+            Diff origBack = d;
+            diffList.removeBack();
+
+
+            while(nofUnmatched > 0)
+            {
+                if(d.diff1 > 0 && d.diff2 > 0)
+                {
+                    d.diff1--;
+                    d.diff2--;
+                    nofUnmatched--;
+                }
+                else if(d.nofEquals > 0)
+                {
+                    d.nofEquals--;
+                    nofUnmatched--;
+                }
+
+                if(d.nofEquals == 0 && (d.diff1 == 0 || d.diff2 == 0) && nofUnmatched > 0)
+                {
+                    if(diffList.empty)
+                    {
+                        break;
+                    }
+                    d.nofEquals += diffList.back.nofEquals;
+                    d.diff1 += diffList.back.diff1;
+                    d.diff2 += diffList.back.diff2;
+                    diffList.removeBack();
+                    endReached = false;
+                }
+            }
+
+
+            if(endReached)
+            {
+                diffList.insertBack(origBack);
+            }
+            else
+            {
+                assert(nofUnmatched == 0);
+                r1 = array(line1)[ru1.length + nofUnmatched..$];
+                r2 = array(line2)[ru2.length + nofUnmatched..$];
+                diffList.insertBack(d);
+            }
+        }
+
+        if(endReached)
+        {
+            break;
+        }
+    }
+
+    verifyDiffList(diffList, cast(int)array(line1).length, cast(int)array(line2).length);
+
+    return diffList;
+}
+
+
+
+unittest
+{
+
+    Diff[] mirrorDiffArray(Diff[] diffArray)
+    {
+        Diff[] mirroredArray = diffArray.dup;
+
+        foreach(ref d; mirroredArray)
+        {
+            swap(d.diff1, d.diff2);
+        }
+
+        return mirroredArray;
+    }
+
+    // unittest for mirrorDiffArray
+    auto arr1 = [Diff(1,2,3)];
+    auto arr2 = mirrorDiffArray(arr1);
+    assertEqual(arr1[0], Diff(1,2,3));
+    assertEqual(arr2[0], Diff(1,3,2));
+
+    Diff[] normalize(Diff[] diffArray)
+    {
+        Diff[] normalizedDiffArray;
+
+        Diff newD;
+        foreach(d; diffArray)
+        {
+            if(newD.diff1 == 0 && newD.diff2 == 0)
+            {
+                newD.nofEquals += d.nofEquals;
+                d.nofEquals = 0;
+            }
+            if(d.nofEquals == 0)
+            {
+                newD.diff1 += d.diff1;
+                newD.diff2 += d.diff2;
+            }
+            else
+            {
+                normalizedDiffArray ~= newD;
+                newD = d;
+            }
+        }
+        if(newD != Diff(0,0,0))
+        {
+            normalizedDiffArray ~= newD;
+        }
+
+        return normalizedDiffArray;
+    }
+
+    // unittest for normalize
+    assertEqual(normalize([Diff(3,0,0),Diff(0,1,2)]), [Diff(3,1,2)]); // trivially mergable
+    assertEqual(normalize([Diff(0,1,1),Diff(4,0,0)]), [Diff(0,1,1), Diff(4,0,0)]); // trivially not mergable
+    assertEqual(normalize([Diff(3,0,0),Diff(4,1,2)]), [Diff(7,1,2)]); // mergeable because no diff in first
+    assertEqual(normalize([Diff(3,1,0),Diff(4,1,2)]), [Diff(3,1,0), Diff(4,1,2)]); // not mergable because diff1 in first
+    assertEqual(normalize([Diff(3,0,1),Diff(4,1,2)]), [Diff(3,0,1), Diff(4,1,2)]); // not mergable because diff2 in first
+    assertEqual(normalize([Diff(3,1,0),Diff(0,1,2)]), [Diff(3,2,2)]); // mergable despite diff1 in first because no equal in second
+    assertEqual(normalize([Diff(3,0,1),Diff(0,1,2)]), [Diff(3,1,3)]); // mergable despite diff2 in first because no equal in second
+
+
+    void testCalcDiffIncludingMirrored(string line1, string line2, int match, int maxSearchRange, Diff[] expectedDiffArray, string file = __FILE__, int line = __LINE__)
+    {
+        DiffList dl;
+        dl = calcDiff(line1, line2, match, maxSearchRange);
+        assertEqual(normalize(array(dl)), expectedDiffArray, format("test case at %s:%d (regular) failed", file, line));
+
+        auto mirroredDiffArray = mirrorDiffArray(expectedDiffArray);
+        dl = calcDiff(line2, line1, match, maxSearchRange);
+        assertEqual(normalize(array(dl)), mirroredDiffArray, format("test case at %s:%d (mirrored) failed", file, line));
+    }
+
+    testCalcDiffIncludingMirrored("match", "match", 2, 500, [Diff(5,0,0)]);
+
+    testCalcDiffIncludingMirrored("matmatch", "match", 2, 500, [Diff(0,3,0), Diff(5,0,0)]);
+    testCalcDiffIncludingMirrored("mat_match", "match", 2, 500, [Diff(0,4,0), Diff(5,0,0)]);
+    testCalcDiffIncludingMirrored("mat_______match", "match", 2, 500, [Diff(0,10,0), Diff(5, 0, 0)]);
+
+    testCalcDiffIncludingMirrored("amat_match", "bmatch", 2, 500, [Diff(0,5,1), Diff(5,0,0)]);
+
+    testCalcDiffIncludingMirrored("matchtch", "match", 2, 500, [Diff(5,3,0)]);
+    testCalcDiffIncludingMirrored("match_tch", "match", 2, 500, [Diff(5,4,0)]);
+    testCalcDiffIncludingMirrored("match_______tch", "match", 2, 500, [Diff(5,10,0)]);
+
+    testCalcDiffIncludingMirrored("παρ", "παρ", 2, 500, [Diff(3, 0, 0)]);
+    testCalcDiffIncludingMirrored("ｔｅｒ", "ｔｅｒ", 2, 500, [Diff(3, 0, 0)]);
+    testCalcDiffIncludingMirrored("ｅｒ", "ｔｅｒ", 2, 500, [Diff(0, 0, 1), Diff(2, 0, 0)]);
+}
+
+static void verifyDiffList(DiffList diffList, int size1, int size2)
+{
+    int l1 = 0;
+    int l2 = 0;
+
+    foreach(entry; diffList)
+    {
+        l1 += entry.nofEquals + entry.diff1;
+        l2 += entry.nofEquals + entry.diff2;
+    }
+
+    assertEqual(l1, size1);
+    assertEqual(l2, size2);
+}
+
+bool fineDiff(ref Diff3LineList d3ll,
+              DiffSelection diffSel,
+              shared ILineProvider lpOne,
+              shared ILineProvider lpOther)
+{
+    int maxSearchLength = 500;
+    bool filesIdentical = true;
+
+    for(auto r = d3ll[]; !r.empty(); r.popFront())
+    {
+        auto k1 = r.front.line(left(diffSel));
+        auto k2 = r.front.line(right(diffSel));
+
+        if( (k1 == -1 && k2 != -1) ||
+            (k1 != -1 && k2 == -1) )
+        {
+            filesIdentical = false;
+        }
+
+        if(k1 != -1 && k2 != -1)
+        {
+            auto line1 = lpOne.get(k1);
+            auto line2 = lpOther.get(k2);
+
+            if( (line1.length != line2.length) || line1 != line2 )
+            {
+                filesIdentical = false;
+                DiffList diffList = calcDiff(line1, line2, 2, maxSearchLength);
+
+                // Optimize the diff list
+                bool fineDiffUseless = true;
+                foreach(dli; diffList)
+                {
+                    if(dli.nofEquals >= 4)
+                    {
+                        fineDiffUseless = false;
+                        break;
+                    }
+                }
+
+                bool first = true;
+                foreach(ref dli; diffList)
+                {
+                    if(dli.nofEquals < 4 &&
+                       (dli.diff1 > 0 || dli.diff2 > 0) &&
+                       (fineDiffUseless || !first))
+                    {
+                        dli.diff1 += dli.nofEquals;
+                        dli.diff2 += dli.nofEquals;
+                        dli.nofEquals = 0;
+                    }
+                    first = false;
+                }
+
+                r.front.fineDiff(diffSel) = diffList;
+            }
+        }
+    }
+
+    return filesIdentical;
+}

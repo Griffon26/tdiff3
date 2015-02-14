@@ -48,6 +48,18 @@ public:
         noecho();
         keypad(stdscr, true);
 
+        if(!has_colors())
+        {
+            endwin();
+            throw new Exception("Your terminal does not support color\n");
+        }
+
+        start_color();
+        init_color(COLOR_BLUE, 0, 0, 1000);
+        init_color(COLOR_WHITE, 1000, 1000, 1000);
+        init_pair(1, COLOR_BLUE, COLOR_WHITE);
+        bkgd(COLOR_PAIR(1));
+
         m_inputPanes = new InputPanes(cps, lnps);
 
         auto contentEditor = new ContentEditor(modifiedContentProvider);
