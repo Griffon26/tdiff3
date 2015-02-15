@@ -133,8 +133,12 @@ void main()
     fineDiff(diff3LineList, DiffSelection.A_vs_C, lps[0], lps[2]);
     fineDiff(diff3LineList, DiffSelection.B_vs_C, lps[1], lps[2]);
 
-    writefln("print");
-    printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
+    mergeFineDiffs(diff3LineList, 0);
+    mergeFineDiffs(diff3LineList, 1);
+    mergeFineDiffs(diff3LineList, 2);
+
+    //writefln("print");
+    //printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
 
     writefln("Cleaning up");
 

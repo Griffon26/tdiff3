@@ -1431,3 +1431,296 @@ bool fineDiff(ref Diff3LineList d3ll,
 
     return filesIdentical;
 }
+
+class DiffListIterator
+{
+    private DiffList.Range m_diffListRange;
+    private int m_whichFile;
+    private Diff m_head;
+
+    this(DiffList diffList, int whichFile)
+    {
+        m_diffListRange = diffList[];
+        m_whichFile = whichFile;
+    }
+
+    private ref int diffField(ref Diff d)
+    {
+        switch(m_whichFile)
+        {
+        case 0:
+            return d.diff1;
+        case 1:
+            return d.diff2;
+        default:
+            assert(false);
+        }
+    }
+
+    private void updateHead()
+    {
+        if(m_head.nofEquals == 0 && diffField(m_head) == 0 && !m_diffListRange.empty)
+        {
+            m_head = m_diffListRange.front;
+            m_diffListRange.popFront();
+        }
+    }
+
+    bool atEnd()
+    {
+        return m_head.nofEquals == 0 && diffField(m_head) == 0;
+    }
+
+    Tuple!(bool, int) getNextRun()
+    {
+        updateHead();
+        if(m_head.nofEquals > 0)
+        {
+            return tuple(true, m_head.nofEquals);
+        }
+        else
+        {
+            //assert(diffField(m_head) > 0);
+            return tuple(false, diffField(m_head));
+        }
+    }
+
+    void advance(int n)
+    {
+        while(n > 0)
+        {
+            updateHead();
+
+            auto step = min(n, m_head.nofEquals);
+            n -= step;
+            m_head.nofEquals -= step;
+
+            if(n > 0)
+            {
+                step = min(n, diffField(m_head));
+                n -= step;
+                diffField(m_head) -= step;
+            }
+        }
+    }
+}
+
+private DiffList toDiffList(Diff[] diffArray)
+{
+    DiffList diffList;
+    foreach(d; diffArray)
+    {
+        diffList.insertBack(d);
+    }
+    return diffList;
+}
+
+unittest
+{
+
+    DiffListIterator it;
+
+    it = new DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
+    assertEqual(it.getNextRun(), tuple(true, 1));
+
+    it = new DiffListIterator(toDiffList([Diff(0,2,3)]), 0);
+    assertEqual(it.getNextRun(), tuple(false, 2));
+
+    it = new DiffListIterator(toDiffList([Diff(0,2,3)]), 1);
+    assertEqual(it.getNextRun(), tuple(false, 3));
+
+    it = new DiffListIterator(toDiffList([Diff(3,5,7)]), 0);
+    it.advance(2);
+    assertEqual(it.getNextRun(), tuple(true, 1));
+
+    it = new DiffListIterator(toDiffList([Diff(3,5,7)]), 0);
+    it.advance(3);
+    assertEqual(it.getNextRun(), tuple(false, 5));
+
+    it = new DiffListIterator(toDiffList([Diff(3,5,7)]), 0);
+    it.advance(4);
+    assertEqual(it.getNextRun(), tuple(false, 4));
+
+    it = new DiffListIterator(toDiffList([Diff(3,5,7)]), 1);
+    it.advance(4);
+    assertEqual(it.getNextRun(), tuple(false, 6));
+
+    it = new DiffListIterator(toDiffList([Diff(3,5,7), Diff(3,2,1)]), 0);
+    it.advance(10);
+    assertEqual(it.getNextRun(), tuple(true, 1));
+
+    // Check that advancing does not modify the original list
+    auto dl = toDiffList([Diff(3,5,7), Diff(3,2,1)]);
+    it = new DiffListIterator(dl, 0);
+    it.advance(10);
+    assertEqual(array(dl), [Diff(3,5,7), Diff(3,2,1)]);
+
+
+}
+
+DList!int _mergeFineDiffs(DiffListIterator it1,
+                          DiffListIterator it2)
+{
+    enum MergeState
+    {
+        BOTH_EQUAL,
+        ONE_DIFFERENT,
+        TWO_DIFFERENT
+    }
+
+    DList!int mergedFineDiffList;
+
+    bool countingEquals = true;
+    int run = 0;
+
+    while(true)
+    {
+        int step;
+
+        auto t1 = it1.getNextRun();
+        auto t2 = it2.getNextRun();
+
+        bool equal1 = t1[0];
+        bool equal2 = t2[0];
+        int length1 = t1[1];
+        int length2 = t2[1];
+
+        // check if either of the iterators is at its end
+        if(it1.atEnd() || it2.atEnd())
+        {
+            break;
+        }
+
+        auto equalsAhead = equal1 && equal2;
+
+        if(equalsAhead != countingEquals)
+        {
+            mergedFineDiffList.insertBack(run);
+            countingEquals = equalsAhead;
+            run = 0;
+        }
+
+        if(equalsAhead)
+        {
+            step = min(length1, length2);
+        }
+        else
+        {
+            step = equal1 ? length2 : length1;
+        }
+
+        run += step;
+        it1.advance(step);
+        it2.advance(step);
+    }
+
+    auto it = it1.atEnd() ? it2 : it1;
+
+    while(true)
+    {
+        auto t = it.getNextRun();
+
+        bool equal = t[0];
+        int length = t[1];
+
+        if(it.atEnd())
+        {
+            break;
+        }
+
+        if(equal != countingEquals)
+        {
+            mergedFineDiffList.insertBack(run);
+            countingEquals = equal;
+            run = 0;
+        }
+
+        run += length;
+        it.advance(length);
+    }
+
+    if(run != 0)
+    {
+        mergedFineDiffList.insertBack(run);
+    }
+
+    return mergedFineDiffList;
+}
+
+unittest
+{
+    DiffListIterator it1, it2;
+    DList!int dl;
+
+    // Both identical
+    it1 = new DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
+    it2 = new DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
+    dl = _mergeFineDiffs(it1, it2);
+    assertEqual(array(dl), [1,2]);
+
+    // Difference trumps equal in same Diff
+    it1 = new DiffListIterator(toDiffList([Diff(3,2,2)]), 0);
+    it2 = new DiffListIterator(toDiffList([Diff(1,4,3)]), 0);
+    dl = _mergeFineDiffs(it1, it2);
+    assertEqual(array(dl), [1,4]);
+
+    // Difference trumps equal in next Diff
+    it1 = new DiffListIterator(toDiffList([Diff(2,1,1), Diff(1,1,1)]), 0);
+    it2 = new DiffListIterator(toDiffList([Diff(1,4,3)]), 0);
+    dl = _mergeFineDiffs(it1, it2);
+    assertEqual(array(dl), [1,4]);
+
+    // Difference on either side trumps equal in other
+    it1 = new DiffListIterator(toDiffList([Diff(2,2,0), Diff(2,0,0)]), 0);
+    it2 = new DiffListIterator(toDiffList([Diff(0,2,0), Diff(2,2,0)]), 0);
+    dl = _mergeFineDiffs(it1, it2);
+    assertEqual(array(dl), [0, 6]);
+
+    // Equal in the middle of a stretch of diff
+    it1 = new DiffListIterator(toDiffList([Diff(0,2,0), Diff(3,4,0)]), 0);
+    it2 = new DiffListIterator(toDiffList([Diff(9,0,0)]), 0);
+    dl = _mergeFineDiffs(it1, it2);
+    assertEqual(array(dl), [0, 2, 3, 4]);
+
+    // Diff in the middle of a stretch of equal
+    it1 = new DiffListIterator(toDiffList([Diff(2,3,0), Diff(4,0,0)]), 0);
+    it2 = new DiffListIterator(toDiffList([Diff(9,0,0)]), 0);
+    dl = _mergeFineDiffs(it1, it2);
+    assertEqual(array(dl), [2, 3, 4]);
+
+
+    it1 = new DiffListIterator(toDiffList([Diff(2, 18, 0), Diff(1, 0, 0)]), 0);
+    it2 = new DiffListIterator(toDiffList([Diff(0, 1, 36), Diff(1, 0, 0)]), 0);
+    dl = _mergeFineDiffs(it1, it2);
+    assertEqual(array(dl), [0, 1, 1, 18, 1]);
+}
+
+void mergeFineDiffs(ref Diff3LineList d3ll,
+                    int fileIndex)
+{
+    foreach(ref r; d3ll)
+    {
+        DiffListIterator it1, it2;
+
+        switch(fileIndex)
+        {
+        case 0:
+            it1 = new DiffListIterator(r.fineDiff(DiffSelection.A_vs_B), 0);
+            it2 = new DiffListIterator(r.fineDiff(DiffSelection.A_vs_C), 0);
+            break;
+        case 1:
+            it1 = new DiffListIterator(r.fineDiff(DiffSelection.A_vs_B), 1);
+            it2 = new DiffListIterator(r.fineDiff(DiffSelection.B_vs_C), 0);
+            break;
+        case 2:
+            it1 = new DiffListIterator(r.fineDiff(DiffSelection.A_vs_C), 1);
+            it2 = new DiffListIterator(r.fineDiff(DiffSelection.B_vs_C), 1);
+            break;
+        default:
+            assert(false);
+        }
+
+        r.fine(fileIndex) = _mergeFineDiffs(it1, it2);
+    }
+}
+

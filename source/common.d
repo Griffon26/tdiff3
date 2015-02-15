@@ -162,12 +162,12 @@ unittest
 
 struct Diff
 {
-    uint nofEquals;
+    int nofEquals;
 
-    uint diff1;
-    uint diff2;
+    int diff1;
+    int diff2;
 
-    this(uint eq, uint d1, uint d2)
+    this(int eq, int d1, int d2)
     {
         nofEquals = eq;
         diff1 = d1;
@@ -224,6 +224,10 @@ struct Diff3Line
     DiffList fineAC;
     DiffList fineBC;
 
+    DList!int fineA;
+    DList!int fineB;
+    DList!int fineC;
+
     ref int line(int i)
     {
         switch(i)
@@ -262,6 +266,21 @@ struct Diff3Line
             return fineAC;
         case DiffSelection.B_vs_C:
             return fineBC;
+        }
+    }
+
+    ref DList!int fine(int i)
+    {
+        switch(i)
+        {
+        case 0:
+            return fineA;
+        case 1:
+            return fineB;
+        case 2:
+            return fineC;
+        default:
+            assert(false);
         }
     }
 }

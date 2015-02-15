@@ -28,15 +28,15 @@ module diff3contentprovider;
 import std.typecons;
 
 import common;
-import icontentprovider;
+import iformattedcontentprovider;
 import ilineprovider;
 
 /**
- * Diff3ContentProvider provides an IContentProvider interface for the lines
- * in a Diff3LineArray belonging to a single file. Which file that is is
+ * Diff3ContentProvider provides an IFormattedContentProvider interface for the
+ * lines in a Diff3LineArray belonging to a single file. Which file that is is
  * selected when the Diff3ContentProvider is created.
  */
-class Diff3ContentProvider: IContentProvider
+class Diff3ContentProvider: IFormattedContentProvider
 {
     int m_contentWidth;
     int m_contentHeight;
@@ -72,6 +72,11 @@ class Diff3ContentProvider: IContentProvider
         return result;
     }
 
+    FormatList getFormat(int contentLine)
+    {
+        return FormatList();
+    }
+
     int getContentWidth()
     {
         return m_contentWidth;
@@ -81,6 +86,5 @@ class Diff3ContentProvider: IContentProvider
     {
         return m_contentHeight;
     }
-
 }
 
