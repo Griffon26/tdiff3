@@ -184,6 +184,15 @@ enum DiffSelection
     B_vs_C
 }
 
+enum DiffStyle
+{
+    DIFFERENT,
+    A_B_SAME,
+    A_C_SAME,
+    B_C_SAME,
+    ALL_SAME
+}
+
 int left(DiffSelection ds)
 {
     final switch(ds)
@@ -223,6 +232,10 @@ struct Diff3Line
     DiffList fineAB;
     DiffList fineAC;
     DiffList fineBC;
+
+    DiffStyle fineStyleA;
+    DiffStyle fineStyleB;
+    DiffStyle fineStyleC;
 
     DList!int fineA;
     DList!int fineB;
@@ -266,6 +279,21 @@ struct Diff3Line
             return fineAC;
         case DiffSelection.B_vs_C:
             return fineBC;
+        }
+    }
+
+    ref DiffStyle fineStyle(int i)
+    {
+        switch(i)
+        {
+        case 0:
+            return fineStyleA;
+        case 1:
+            return fineStyleB;
+        case 2:
+            return fineStyleC;
+        default:
+            assert(false);
         }
     }
 

@@ -23,24 +23,33 @@
  * Authors: Maurice van der Pot
  * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
  */
-module iformattedcontentprovider;
+module colors;
 
-import std.container;
-
-import common;
-import icontentprovider;
-
-struct LineFormat
+enum Color
 {
-    DiffStyle style;
-    DList!int runs;
+    BLACK,
+    RED,
+    GREEN,
+    YELLOW,
+    BLUE,
+    PURPLE,
+    CYAN,
+    WHITE,
+    GRAY
 }
 
-/**
- * IFormattedContentProvider is an IContentProvider that also provides line formatting.
- */
-interface IFormattedContentProvider: IContentProvider
+enum ColorPair
 {
-    LineFormat getFormat(int line);
+    NORMAL,
+    A_B_SAME,
+    A_C_SAME,
+    B_C_SAME,
+    DIFFERENT,
+    NORMAL_HIGHLIGHTED,
+    A_B_SAME_HIGHLIGHTED,
+    A_C_SAME_HIGHLIGHTED,
+    B_C_SAME_HIGHLIGHTED,
+    DIFFERENT_HIGHLIGHTED,
 }
+
 

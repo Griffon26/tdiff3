@@ -45,3 +45,30 @@ synchronized interface ILineProvider
     int getLastLineNumber();
 }
 
+version(unittest)
+{
+    import std.string;
+
+    synchronized class FakeLineProvider: ILineProvider
+    {
+        Nullable!string get(int line)
+        {
+            Nullable!string result;
+            result = format("line %d\n", line);
+            return result;
+        }
+
+        Nullable!string get(int firstLine, int lastLine)
+        {
+            Nullable!string result;
+            result.nullify();
+            return result;
+        }
+
+        int getLastLineNumber()
+        {
+            return 19;
+        }
+    }
+}
+

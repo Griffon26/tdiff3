@@ -28,9 +28,11 @@ module ui;
 import deimos.ncurses.curses;
 import std.algorithm;
 
+import colors;
 import contenteditor;
 import editablecontentpane;
 import icontentprovider;
+import iformattedcontentprovider;
 import inputpanes;
 import modifiedcontentprovider;
 
@@ -41,7 +43,7 @@ private:
     EditableContentPane m_editableContentPane;
 
 public:
-    this(IContentProvider[3] cps, IContentProvider[3] lnps, ModifiedContentProvider modifiedContentProvider)
+    this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps, ModifiedContentProvider modifiedContentProvider)
     {
         initscr();
         cbreak();
@@ -55,10 +57,21 @@ public:
         }
 
         start_color();
-        init_color(COLOR_BLUE, 0, 0, 1000);
-        init_color(COLOR_WHITE, 1000, 1000, 1000);
-        init_pair(1, COLOR_BLUE, COLOR_WHITE);
-        bkgd(COLOR_PAIR(1));
+        init_color(Color.BLACK, 0, 0, 0);
+        init_color(Color.RED, 1000, 0, 0);
+        init_color(Color.BLUE, 0, 0, 800);
+        init_color(Color.PURPLE, 600, 0, 600);
+        init_color(Color.GREEN, 0, 0, 600);
+        init_color(Color.WHITE, 1000, 1000, 1000);
+        init_color(Color.GRAY, 900, 900, 900);
+
+        //init_pair(ColorPair.NORMAL, Color.BLACK, Color.WHITE);
+        assume_default_colors(Color.BLACK, Color.WHITE);
+        init_pair(ColorPair.A_B_SAME, Color.PURPLE, Color.GRAY);
+        init_pair(ColorPair.A_C_SAME, Color.GREEN, Color.GRAY);
+        init_pair(ColorPair.B_C_SAME, Color.BLUE, Color.GRAY);
+        init_pair(ColorPair.DIFFERENT, Color.RED, Color.GRAY);
+        bkgd(COLOR_PAIR(ColorPair.NORMAL));
 
         m_inputPanes = new InputPanes(cps, lnps);
 

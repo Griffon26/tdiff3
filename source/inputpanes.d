@@ -30,18 +30,20 @@ import std.math;
 
 import deimos.ncurses.curses;
 
-import icontentprovider;
 import contentpane;
+import formattedcontentpane;
+import icontentprovider;
+import iformattedcontentprovider;
 
 /**
- * InputPanes manages the ContentPanes for the three input files and
+ * InputPanes manages the FormattedContentPanes for the three input files and
  * synchronizes scrolling between them. It also draws borders and line numbers.
  */
 class InputPanes
 {
 private:
     ContentPane[3] m_lineNumberPanes;
-    ContentPane[3] m_inputPanes;
+    FormattedContentPane[3] m_inputPanes;
 
     int m_lineNumberWidth;
 
@@ -51,7 +53,7 @@ private:
     int nrOfPanes = 3;
 
 public:
-    this(IContentProvider[3] cps, IContentProvider[3] lnps)
+    this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps)
     {
         assert(cps[0].getContentHeight() == cps[1].getContentHeight() &&
                cps[0].getContentHeight() == cps[2].getContentHeight());
@@ -67,7 +69,7 @@ public:
         for(int i = 0; i < nrOfPanes; i++)
         {
             m_lineNumberPanes[i] = new ContentPane(lnps[i]);
-            m_inputPanes[i] = new ContentPane(cps[i]);
+            m_inputPanes[i] = new FormattedContentPane(cps[i]);
         }
     }
 

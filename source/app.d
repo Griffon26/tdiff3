@@ -38,6 +38,7 @@ import diff;
 import diff3contentprovider;
 import gnudiff;
 import icontentprovider;
+import iformattedcontentprovider;
 import ilineprovider;
 import linenumbercontentprovider;
 import modifiedcontentprovider;
@@ -78,7 +79,7 @@ void printDiff3List(Diff3LineList d3ll,
         {
             lineCText = format("%37s", "");
         }
-        writefln("%s %s %s", lineAText, lineBText, lineCText);
+        writefln("%s %s %s %s %s %s", lineAText, lineBText, lineCText, d3l.bAEqB, d3l.bAEqC, d3l.bBEqC);
     }
 }
 
@@ -92,6 +93,9 @@ void main()
     lps[0] = new shared SimpleFileLineProvider("UTF-8-demo.txt");
     lps[1] = new shared SimpleFileLineProvider("UTF-8-demo2.txt");
     lps[2] = new shared SimpleFileLineProvider("test_short.txt");
+    lps[0] = new shared SimpleFileLineProvider("/home/griffon26/test/kdiff3/file1.c");
+    lps[1] = new shared SimpleFileLineProvider("/home/griffon26/test/kdiff3/file2.c");
+    lps[2] = new shared SimpleFileLineProvider("/home/griffon26/test/kdiff3/file3.c");
 
     GnuDiff gnuDiff = new GnuDiff("/tmp");
     gnuDiff.setFile(0, lps[0]);
@@ -122,10 +126,9 @@ void main()
     validateDiff3LineListForN(diff3LineList, 1, 0, lps[1].getLastLineNumber());
     validateDiff3LineListForN(diff3LineList, 2, 0, lps[2].getLastLineNumber());
 
-//    printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
-
     writefln("trimDiff3LineList");
     trimDiff3LineList(diff3LineList, lps[0], lps[1], lps[2]);
+    printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
 
     /* TODO: finediff */
 
@@ -154,7 +157,7 @@ void main()
     int lineNumberWidth = to!int(trunc(log10(nrOfLines))) + 1;
     writefln("nr of lines in d3la is %d\n", nrOfLines);
 
-    IContentProvider[3] cps;
+    IFormattedContentProvider[3] cps;
     cps[0] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 0, lps[0]);
     cps[1] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 1, lps[1]);
     cps[2] = new Diff3ContentProvider(nrOfColumns, nrOfLines, d3la, 2, lps[2]);

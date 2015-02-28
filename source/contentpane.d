@@ -32,6 +32,7 @@ import std.string;
 
 import deimos.ncurses.curses;
 
+import colors;
 import icontentprovider;
 
 /**
@@ -60,7 +61,7 @@ public:
 
         m_pad = newpad(10, 10);
         //wattron(m_pad, COLOR_PAIR(1));
-        wbkgd(m_pad, COLOR_PAIR(1));
+        //wbkgd(m_pad, COLOR_PAIR(ColorPair.NORMAL));
     }
 
     protected void updateScrollLimits()
@@ -79,7 +80,6 @@ public:
         {
             line = "\n";
         }
-        // TODO: also get the applicable colors and print the line with them
         wprintw(m_pad, toStringz(line));
     }
 

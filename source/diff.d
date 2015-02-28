@@ -959,7 +959,7 @@ void trimDiff3LineList(ref Diff3LineList d3ll,
             lineB++;
         }
 
-        if( line > lineC && r3.front.lineC != -1 && r3.front.bAEqC && r3.front.bBEqC )
+        if( line > lineC && r3.front.lineC != -1 && !r3.front.bAEqC && !r3.front.bBEqC )
         {
             r3c.front.lineC = r3.front.lineC;
             r3.front.lineC = -1;
@@ -1091,7 +1091,74 @@ void trimDiff3LineList(ref Diff3LineList d3ll,
             r3c.popFront();
         }
     }
+
+    /*
+     * TODO: remove empty entries from the trimmed list
+    d3ll = remove!(d => (d.lineA == -1 &&
+                         d.lineB == -1 &&
+                         d.lineC == -1))(d3ll[]);*/
+
 }
+
+version(unittest)
+{
+    auto lp = new shared FakeLineProvider();
+}
+
+unittest
+{
+    /* Check if lines from A are compacted in the simplest case */
+    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false, -1, -1, -1),
+                                          tuple(false, false, false, -1, -1, -1),
+                                          tuple(false, false, false,  1, -1, -1),
+                                          tuple(false, false, false, -1, -1, -1),
+                                          tuple(false, false, false, -1, -1, -1),
+                                          tuple(false, false, false,  1, -1, -1),
+                                          ]);
+    trimDiff3LineList(d3ll, lp, lp, lp);
+
+    auto d3ltuples = d3ll.toTuples;
+    assertEqual(d3ltuples[0], tuple(false, false, false,  1, -1, -1));
+    assertEqual(d3ltuples[1], tuple(false, false, false,  1, -1, -1));
+    assertEqual(d3ltuples.length, 2);
+}
+
+unittest
+{
+    /* Check if lines from B are compacted in the simplest case */
+    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false, -1, -1, -1),
+                                          tuple(false, false, false, -1, -1, -1),
+                                          tuple(false, false, false, -1,  1, -1),
+                                          tuple(false, false, false, -1, -1, -1),
+                                          tuple(false, false, false, -1, -1, -1),
+                                          tuple(false, false, false, -1,  1, -1),
+                                          ]);
+    trimDiff3LineList(d3ll, lp, lp, lp);
+
+    auto d3ltuples = d3ll.toTuples;
+    assertEqual(d3ltuples[0], tuple(false, false, false, -1,  1, -1));
+    assertEqual(d3ltuples[1], tuple(false, false, false, -1,  1, -1));
+    assertEqual(d3ltuples.length, 2);
+}
+
+unittest
+{
+    /* Check if lines from C are compacted in the simplest case */
+    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false, -1, -1, -1),
+                                          tuple(false, false, false, -1, -1, -1),
+                                          tuple(false, false, false, -1, -1,  1),
+                                          tuple(false, false, false, -1, -1, -1),
+                                          tuple(false, false, false, -1, -1, -1),
+                                          tuple(false, false, false, -1, -1,  1),
+                                          ]);
+    trimDiff3LineList(d3ll, lp, lp, lp);
+
+    auto d3ltuples = d3ll.toTuples;
+    assertEqual(d3ltuples[0], tuple(false, false, false, -1, -1,  1));
+    assertEqual(d3ltuples[1], tuple(false, false, false, -1, -1,  1));
+    assertEqual(d3ltuples.length, 2);
+}
+
 
 DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
 {
@@ -1700,6 +1767,7 @@ void mergeFineDiffs(ref Diff3LineList d3ll,
 {
     foreach(ref r; d3ll)
     {
+        DiffStyle diffStyle;
         DiffListIterator it1, it2;
 
         switch(fileIndex)
@@ -1707,20 +1775,28 @@ void mergeFineDiffs(ref Diff3LineList d3ll,
         case 0:
             it1 = new DiffListIterator(r.fineDiff(DiffSelection.A_vs_B), 0);
             it2 = new DiffListIterator(r.fineDiff(DiffSelection.A_vs_C), 0);
+
+            diffStyle = (r.bAEqB ? (r.bAEqC ? DiffStyle.ALL_SAME : DiffStyle.A_B_SAME)
+                                 : (r.bAEqC ? DiffStyle.A_C_SAME : DiffStyle.DIFFERENT));
             break;
         case 1:
             it1 = new DiffListIterator(r.fineDiff(DiffSelection.A_vs_B), 1);
             it2 = new DiffListIterator(r.fineDiff(DiffSelection.B_vs_C), 0);
+            diffStyle = (r.bAEqB ? (r.bBEqC ? DiffStyle.ALL_SAME : DiffStyle.A_B_SAME)
+                                 : (r.bBEqC ? DiffStyle.B_C_SAME : DiffStyle.DIFFERENT));
             break;
         case 2:
             it1 = new DiffListIterator(r.fineDiff(DiffSelection.A_vs_C), 1);
             it2 = new DiffListIterator(r.fineDiff(DiffSelection.B_vs_C), 1);
+            diffStyle = (r.bAEqC ? (r.bBEqC ? DiffStyle.ALL_SAME : DiffStyle.A_C_SAME)
+                                 : (r.bBEqC ? DiffStyle.B_C_SAME : DiffStyle.DIFFERENT));
             break;
         default:
             assert(false);
         }
 
         r.fine(fileIndex) = _mergeFineDiffs(it1, it2);
+        r.fineStyle(fileIndex) = diffStyle;
     }
 }
 

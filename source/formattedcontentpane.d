@@ -28,6 +28,8 @@ module formattedcontentpane;
 import deimos.ncurses.curses;
 import std.string;
 
+import colors;
+import common;
 import contentpane;
 import iformattedcontentprovider;
 
@@ -36,20 +38,64 @@ import iformattedcontentprovider;
  */
 class FormattedContentPane: ContentPane
 {
+    private IFormattedContentProvider m_fcp;
+
     this(IFormattedContentProvider fcp)
     {
+        m_fcp = fcp;
         super(fcp);
+    }
+
+    private ColorPair diffStyleToColor(DiffStyle d)
+    {
+        switch(d)
+        {
+        case DiffStyle.ALL_SAME:
+            return ColorPair.NORMAL;
+        case DiffStyle.A_B_SAME:
+            return ColorPair.A_B_SAME;
+        case DiffStyle.A_C_SAME:
+            return ColorPair.A_C_SAME;
+        case DiffStyle.B_C_SAME:
+            return ColorPair.B_C_SAME;
+        case DiffStyle.DIFFERENT:
+            return ColorPair.DIFFERENT;
+        default:
+            assert(false);
+        }
     }
 
     override protected void drawMissingLine(int contentLine)
     {
-        auto line = m_cp.get(contentLine);
+        auto line = m_fcp.get(contentLine);
+        auto lineFormat = m_fcp.getFormat(contentLine);
         if(line.isNull)
         {
             line = "\n";
         }
-        // TODO: also get the applicable colors and print the line with them
-        wprintw(m_pad, toStringz(line));
+
+        int offset = 0;
+        int equal = true;
+        ColorPair sameColor = diffStyleToColor(DiffStyle.ALL_SAME);
+        ColorPair differentColor = diffStyleToColor(lineFormat.style);
+
+        if(lineFormat.runs.empty)
+        {
+            wattron(m_pad, COLOR_PAIR(sameColor));
+            wprintw(m_pad, toStringz(line));
+            wattroff(m_pad, COLOR_PAIR(sameColor));
+        }
+        else
+        {
+            foreach(run; lineFormat.runs)
+            {
+                wattron(m_pad, COLOR_PAIR(equal ? sameColor : differentColor));
+                wprintw(m_pad, toStringz(line[offset..offset + run]));
+                wattroff(m_pad, COLOR_PAIR(equal ? sameColor : differentColor));
+                offset += run;
+                equal = !equal;
+            }
+        }
     }
 }
 
