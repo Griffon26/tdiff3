@@ -72,13 +72,10 @@ class Diff3ContentProvider: IFormattedContentProvider
         return result;
     }
 
-    LineFormat getFormat(int contentLine)
+    StyleList getFormat(int contentLine)
     {
         assert(contentLine < m_contentHeight);
-
-        LineFormat lineFormat = LineFormat(m_d3la[contentLine].fineStyle(m_fileIndex),
-                                           m_d3la[contentLine].fine(m_fileIndex));
-        return lineFormat;
+        return m_d3la[contentLine].style(m_fileIndex);
     }
 
     int getContentWidth()

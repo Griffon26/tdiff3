@@ -1485,67 +1485,69 @@ static void verifyDiffList(DiffList diffList, int size1, int size2)
     assertEqual(l2, size2);
 }
 
-bool fineDiff(ref Diff3LineList d3ll,
-              DiffSelection diffSel,
-              shared ILineProvider lpOne,
-              shared ILineProvider lpOther)
+DiffList fineDiff(int k1,
+                  int k2,
+                  string line1,
+                  string line2)
 {
     int maxSearchLength = 500;
     bool filesIdentical = true;
 
-    for(auto r = d3ll[]; !r.empty(); r.popFront())
+    if( (k1 == -1 && k2 != -1) ||
+        (k1 != -1 && k2 == -1) )
     {
-        auto k1 = r.front.line(left(diffSel));
-        auto k2 = r.front.line(right(diffSel));
+        filesIdentical = false;
+    }
 
-        if( (k1 == -1 && k2 != -1) ||
-            (k1 != -1 && k2 == -1) )
+    DiffList diffList;
+    auto line1Length = (k1 == -1) ? 0 : line1.length;
+    auto line2Length = (k2 == -1) ? 0 : line2.length;
+    if(k1 == -1 || k2 == -1)
+    {
+        diffList.insertBack(Diff(0, line1Length, line2Length));
+    }
+    else
+    {
+        if(line1.length == line2.length && line1 == line2)
+        {
+            diffList.insertBack(Diff(line1.length, 0, 0));
+        }
+        else
         {
             filesIdentical = false;
-        }
+            diffList = calcDiff(line1, line2, 2, maxSearchLength);
 
-        if(k1 != -1 && k2 != -1)
-        {
-            auto line1 = lpOne.get(k1);
-            auto line2 = lpOther.get(k2);
-
-            if( (line1.length != line2.length) || line1 != line2 )
+            // Optimize the diff list
+            bool fineDiffUseless = true;
+            foreach(dli; diffList)
             {
-                filesIdentical = false;
-                DiffList diffList = calcDiff(line1, line2, 2, maxSearchLength);
-
-                // Optimize the diff list
-                bool fineDiffUseless = true;
-                foreach(dli; diffList)
+                if(dli.nofEquals >= 4)
                 {
-                    if(dli.nofEquals >= 4)
-                    {
-                        fineDiffUseless = false;
-                        break;
-                    }
+                    fineDiffUseless = false;
+                    break;
                 }
-
-                bool first = true;
-                foreach(ref dli; diffList)
-                {
-                    if(dli.nofEquals < 4 &&
-                       (dli.diff1 > 0 || dli.diff2 > 0) &&
-                       (fineDiffUseless || !first))
-                    {
-                        dli.diff1 += dli.nofEquals;
-                        dli.diff2 += dli.nofEquals;
-                        dli.nofEquals = 0;
-                    }
-                    first = false;
-                }
-
-                r.front.fineDiff(diffSel) = diffList;
             }
+
+            bool first = true;
+            foreach(ref dli; diffList)
+            {
+                if(dli.nofEquals < 4 &&
+                   (dli.diff1 > 0 || dli.diff2 > 0) &&
+                   (fineDiffUseless || !first))
+                {
+                    dli.diff1 += dli.nofEquals;
+                    dli.diff2 += dli.nofEquals;
+                    dli.nofEquals = 0;
+                }
+                first = false;
+            }
+
         }
     }
 
-    return filesIdentical;
+    return diffList;
 }
+
 
 class DiffListIterator
 {
@@ -1574,7 +1576,7 @@ class DiffListIterator
 
     private void updateHead()
     {
-        if(m_head.nofEquals == 0 && diffField(m_head) == 0 && !m_diffListRange.empty)
+        while(m_head.nofEquals == 0 && diffField(m_head) == 0 && !m_diffListRange.empty)
         {
             m_head = m_diffListRange.front;
             m_diffListRange.popFront();
@@ -1583,6 +1585,7 @@ class DiffListIterator
 
     bool atEnd()
     {
+        updateHead();
         return m_head.nofEquals == 0 && diffField(m_head) == 0;
     }
 
@@ -1673,21 +1676,16 @@ unittest
 
 }
 
-DList!int _mergeFineDiffs(DiffListIterator it1,
-                          DiffListIterator it2)
+DList!StyleFragment lineStyleFromFineDiffs(DiffListIterator it1,
+                                           DiffListIterator it2,
+                                           DiffStyle sameInIt1,
+                                           DiffStyle sameInIt2)
 {
-    enum MergeState
-    {
-        BOTH_EQUAL,
-        ONE_DIFFERENT,
-        TWO_DIFFERENT
-    }
+    DList!StyleFragment styleList;
 
-    DList!int mergedFineDiffList;
-
-    bool countingEquals = true;
+    DiffStyle style = DiffStyle.ALL_SAME;
     int run = 0;
-
+    
     while(true)
     {
         int step;
@@ -1706,145 +1704,141 @@ DList!int _mergeFineDiffs(DiffListIterator it1,
             break;
         }
 
-        auto equalsAhead = equal1 && equal2;
+        DiffStyle nextStyle = equal1 ? (equal2 ? DiffStyle.ALL_SAME : sameInIt1)
+                                     : (equal2 ? sameInIt2 : DiffStyle.DIFFERENT);
 
-        if(equalsAhead != countingEquals)
+        if(nextStyle != style)
         {
-            mergedFineDiffList.insertBack(run);
-            countingEquals = equalsAhead;
-            run = 0;
+            if(run > 0)
+            {
+                styleList.insertBack(StyleFragment(style, run));
+                run = 0;
+            }
+            style = nextStyle;
         }
 
-        if(equalsAhead)
-        {
-            step = min(length1, length2);
-        }
-        else
-        {
-            step = equal1 ? length2 : length1;
-        }
+        step = min(length1, length2);
 
         run += step;
         it1.advance(step);
         it2.advance(step);
     }
 
-    auto it = it1.atEnd() ? it2 : it1;
-
-    while(true)
-    {
-        auto t = it.getNextRun();
-
-        bool equal = t[0];
-        int length = t[1];
-
-        if(it.atEnd())
-        {
-            break;
-        }
-
-        if(equal != countingEquals)
-        {
-            mergedFineDiffList.insertBack(run);
-            countingEquals = equal;
-            run = 0;
-        }
-
-        run += length;
-        it.advance(length);
-    }
+    assert(it1.atEnd() && it2.atEnd());
 
     if(run != 0)
     {
-        mergedFineDiffList.insertBack(run);
+        styleList.insertBack(StyleFragment(style, run));
     }
 
-    return mergedFineDiffList;
+    return styleList;
 }
 
 unittest
 {
     DiffListIterator it1, it2;
-    DList!int dl;
+    DList!StyleFragment dl;
 
     // Both identical
     it1 = new DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
     it2 = new DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
-    dl = _mergeFineDiffs(it1, it2);
-    assertEqual(array(dl), [1,2]);
+    dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
+    assertEqual(array(dl), [StyleFragment(DiffStyle.ALL_SAME, 1),
+                            StyleFragment(DiffStyle.DIFFERENT, 2)]);
 
     // Difference trumps equal in same Diff
     it1 = new DiffListIterator(toDiffList([Diff(3,2,2)]), 0);
     it2 = new DiffListIterator(toDiffList([Diff(1,4,3)]), 0);
-    dl = _mergeFineDiffs(it1, it2);
-    assertEqual(array(dl), [1,4]);
+    dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
+    assertEqual(array(dl), [StyleFragment(DiffStyle.ALL_SAME, 1),
+                            StyleFragment(DiffStyle.A_B_SAME, 2),
+                            StyleFragment(DiffStyle.DIFFERENT, 2)]);
 
     // Difference trumps equal in next Diff
     it1 = new DiffListIterator(toDiffList([Diff(2,1,1), Diff(1,1,1)]), 0);
     it2 = new DiffListIterator(toDiffList([Diff(1,4,3)]), 0);
-    dl = _mergeFineDiffs(it1, it2);
-    assertEqual(array(dl), [1,4]);
+    dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
+    assertEqual(array(dl), [StyleFragment(DiffStyle.ALL_SAME, 1),
+                            StyleFragment(DiffStyle.A_B_SAME, 1),
+                            StyleFragment(DiffStyle.DIFFERENT, 1),
+                            StyleFragment(DiffStyle.A_B_SAME, 1),
+                            StyleFragment(DiffStyle.DIFFERENT, 1)]);
 
     // Difference on either side trumps equal in other
     it1 = new DiffListIterator(toDiffList([Diff(2,2,0), Diff(2,0,0)]), 0);
     it2 = new DiffListIterator(toDiffList([Diff(0,2,0), Diff(2,2,0)]), 0);
-    dl = _mergeFineDiffs(it1, it2);
-    assertEqual(array(dl), [0, 6]);
+    dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
+    assertEqual(array(dl), [StyleFragment(DiffStyle.A_B_SAME, 2),
+                            StyleFragment(DiffStyle.A_C_SAME, 2),
+                            StyleFragment(DiffStyle.A_B_SAME, 2)]);
 
     // Equal in the middle of a stretch of diff
     it1 = new DiffListIterator(toDiffList([Diff(0,2,0), Diff(3,4,0)]), 0);
     it2 = new DiffListIterator(toDiffList([Diff(9,0,0)]), 0);
-    dl = _mergeFineDiffs(it1, it2);
-    assertEqual(array(dl), [0, 2, 3, 4]);
+    dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
+    assertEqual(array(dl), [StyleFragment(DiffStyle.A_C_SAME, 2),
+                            StyleFragment(DiffStyle.ALL_SAME, 3),
+                            StyleFragment(DiffStyle.A_C_SAME, 4)]);
 
     // Diff in the middle of a stretch of equal
     it1 = new DiffListIterator(toDiffList([Diff(2,3,0), Diff(4,0,0)]), 0);
     it2 = new DiffListIterator(toDiffList([Diff(9,0,0)]), 0);
-    dl = _mergeFineDiffs(it1, it2);
-    assertEqual(array(dl), [2, 3, 4]);
-
+    dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
+    assertEqual(array(dl), [StyleFragment(DiffStyle.ALL_SAME, 2),
+                            StyleFragment(DiffStyle.A_C_SAME, 3),
+                            StyleFragment(DiffStyle.ALL_SAME, 4)]);
 
     it1 = new DiffListIterator(toDiffList([Diff(2, 18, 0), Diff(1, 0, 0)]), 0);
-    it2 = new DiffListIterator(toDiffList([Diff(0, 1, 36), Diff(1, 0, 0)]), 0);
-    dl = _mergeFineDiffs(it1, it2);
-    assertEqual(array(dl), [0, 1, 1, 18, 1]);
+    it2 = new DiffListIterator(toDiffList([Diff(0, 1, 36), Diff(1, 19, 0)]), 0);
+    dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
+    assertEqual(array(dl), [StyleFragment(DiffStyle.A_B_SAME, 1),
+                            StyleFragment(DiffStyle.ALL_SAME, 1),
+                            StyleFragment(DiffStyle.DIFFERENT, 18),
+                            StyleFragment(DiffStyle.A_B_SAME, 1)]);
 }
 
-void mergeFineDiffs(ref Diff3LineList d3ll,
-                    int fileIndex)
+void determineFineDiffStylePerLine(ref Diff3Line d3l,
+                                   shared ILineProvider lpA,
+                                   shared ILineProvider lpB,
+                                   shared ILineProvider lpC)
 {
-    foreach(ref r; d3ll)
+    auto fineDiffAB = fineDiff(d3l.line(0),
+                               d3l.line(1), 
+                               (d3l.line(0) == -1) ? "" : lpA.get(d3l.line(0)),
+                               (d3l.line(1) == -1) ? "" : lpB.get(d3l.line(1)));
+    auto fineDiffAC = fineDiff(d3l.line(0),
+                               d3l.line(2),
+                               (d3l.line(0) == -1) ? "" : lpA.get(d3l.line(0)),
+                               (d3l.line(2) == -1) ? "" : lpC.get(d3l.line(2)));
+    auto fineDiffBC = fineDiff(d3l.line(1),
+                               d3l.line(2),
+                               (d3l.line(1) == -1) ? "" : lpB.get(d3l.line(1)),
+                               (d3l.line(2) == -1) ? "" : lpC.get(d3l.line(2)));
+
+    DiffListIterator it1, it2;
+
+    it1 = new DiffListIterator(fineDiffAB, 0);
+    it2 = new DiffListIterator(fineDiffAC, 0);
+    d3l.styleA = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
+
+    it1 = new DiffListIterator(fineDiffAB, 1);
+    it2 = new DiffListIterator(fineDiffBC, 0);
+    d3l.styleB = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.B_C_SAME);
+
+    it1 = new DiffListIterator(fineDiffAC, 1);
+    it2 = new DiffListIterator(fineDiffBC, 1);
+    d3l.styleC = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_C_SAME, DiffStyle.B_C_SAME);
+}
+
+
+void determineFineDiffStyle(Diff3LineList diff3LineList,
+                            shared ILineProvider lpA,
+                            shared ILineProvider lpB,
+                            shared ILineProvider lpC)
+{
+    foreach(ref d3l; diff3LineList)
     {
-        DiffStyle diffStyle;
-        DiffListIterator it1, it2;
-
-        switch(fileIndex)
-        {
-        case 0:
-            it1 = new DiffListIterator(r.fineDiff(DiffSelection.A_vs_B), 0);
-            it2 = new DiffListIterator(r.fineDiff(DiffSelection.A_vs_C), 0);
-
-            diffStyle = (r.bAEqB ? (r.bAEqC ? DiffStyle.ALL_SAME : DiffStyle.A_B_SAME)
-                                 : (r.bAEqC ? DiffStyle.A_C_SAME : DiffStyle.DIFFERENT));
-            break;
-        case 1:
-            it1 = new DiffListIterator(r.fineDiff(DiffSelection.A_vs_B), 1);
-            it2 = new DiffListIterator(r.fineDiff(DiffSelection.B_vs_C), 0);
-            diffStyle = (r.bAEqB ? (r.bBEqC ? DiffStyle.ALL_SAME : DiffStyle.A_B_SAME)
-                                 : (r.bBEqC ? DiffStyle.B_C_SAME : DiffStyle.DIFFERENT));
-            break;
-        case 2:
-            it1 = new DiffListIterator(r.fineDiff(DiffSelection.A_vs_C), 1);
-            it2 = new DiffListIterator(r.fineDiff(DiffSelection.B_vs_C), 1);
-            diffStyle = (r.bAEqC ? (r.bBEqC ? DiffStyle.ALL_SAME : DiffStyle.A_C_SAME)
-                                 : (r.bBEqC ? DiffStyle.B_C_SAME : DiffStyle.DIFFERENT));
-            break;
-        default:
-            assert(false);
-        }
-
-        r.fine(fileIndex) = _mergeFineDiffs(it1, it2);
-        r.fineStyle(fileIndex) = diffStyle;
+        determineFineDiffStylePerLine(d3l, lpA, lpB, lpC);
     }
 }
 

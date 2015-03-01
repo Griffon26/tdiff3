@@ -30,17 +30,11 @@ import std.container;
 import common;
 import icontentprovider;
 
-struct LineFormat
-{
-    DiffStyle style;
-    DList!int runs;
-}
-
 /**
  * IFormattedContentProvider is an IContentProvider that also provides line formatting.
  */
 interface IFormattedContentProvider: IContentProvider
 {
-    LineFormat getFormat(int line);
+    StyleList getFormat(int line);
 }
 

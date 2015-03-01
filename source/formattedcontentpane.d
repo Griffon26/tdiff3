@@ -68,32 +68,30 @@ class FormattedContentPane: ContentPane
     override protected void drawMissingLine(int contentLine)
     {
         auto line = m_fcp.get(contentLine);
-        auto lineFormat = m_fcp.getFormat(contentLine);
+        auto styleList = m_fcp.getFormat(contentLine);
         if(line.isNull)
         {
             line = "\n";
         }
 
         int offset = 0;
-        int equal = true;
-        ColorPair sameColor = diffStyleToColor(DiffStyle.ALL_SAME);
-        ColorPair differentColor = diffStyleToColor(lineFormat.style);
+        ColorPair defaultColor = diffStyleToColor(DiffStyle.ALL_SAME);
 
-        if(lineFormat.runs.empty)
+        if(styleList.empty)
         {
-            wattron(m_pad, COLOR_PAIR(sameColor));
+            wattron(m_pad, COLOR_PAIR(defaultColor));
             wprintw(m_pad, toStringz(line));
-            wattroff(m_pad, COLOR_PAIR(sameColor));
+            wattroff(m_pad, COLOR_PAIR(defaultColor));
         }
         else
         {
-            foreach(run; lineFormat.runs)
+            foreach(styleFragment; styleList)
             {
-                wattron(m_pad, COLOR_PAIR(equal ? sameColor : differentColor));
-                wprintw(m_pad, toStringz(line[offset..offset + run]));
-                wattroff(m_pad, COLOR_PAIR(equal ? sameColor : differentColor));
-                offset += run;
-                equal = !equal;
+                auto colorPair = COLOR_PAIR(diffStyleToColor(styleFragment.style));
+                wattron(m_pad, colorPair);
+                wprintw(m_pad, toStringz(line[offset..offset + styleFragment.length]));
+                wattroff(m_pad, colorPair);
+                offset += styleFragment.length;
             }
         }
     }

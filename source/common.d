@@ -219,6 +219,14 @@ int right(DiffSelection ds)
     }
 }
 
+struct StyleFragment
+{
+    DiffStyle style;
+    int length;
+}
+
+alias StyleList = DList!StyleFragment;
+
 struct Diff3Line
 {
     int lineA = -1;
@@ -229,17 +237,9 @@ struct Diff3Line
     bool bAEqC = false;
     bool bBEqC = false;
 
-    DiffList fineAB;
-    DiffList fineAC;
-    DiffList fineBC;
-
-    DiffStyle fineStyleA;
-    DiffStyle fineStyleB;
-    DiffStyle fineStyleC;
-
-    DList!int fineA;
-    DList!int fineB;
-    DList!int fineC;
+    StyleList styleA;
+    StyleList styleB;
+    StyleList styleC;
 
     ref int line(int i)
     {
@@ -269,44 +269,16 @@ struct Diff3Line
         }
     }
 
-    ref DiffList fineDiff(DiffSelection diffSel)
-    {
-        final switch(diffSel)
-        {
-        case DiffSelection.A_vs_B:
-            return fineAB;
-        case DiffSelection.A_vs_C:
-            return fineAC;
-        case DiffSelection.B_vs_C:
-            return fineBC;
-        }
-    }
-
-    ref DiffStyle fineStyle(int i)
+    ref StyleList style(int i)
     {
         switch(i)
         {
         case 0:
-            return fineStyleA;
+            return styleA;
         case 1:
-            return fineStyleB;
+            return styleB;
         case 2:
-            return fineStyleC;
-        default:
-            assert(false);
-        }
-    }
-
-    ref DList!int fine(int i)
-    {
-        switch(i)
-        {
-        case 0:
-            return fineA;
-        case 1:
-            return fineB;
-        case 2:
-            return fineC;
+            return styleC;
         default:
             assert(false);
         }
