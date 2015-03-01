@@ -31,6 +31,7 @@ module diff;
 import std.algorithm;
 import std.array;
 import std.container;
+import std.conv;
 import std.math;
 import std.range;
 import std.stdio;
@@ -1500,8 +1501,8 @@ DiffList fineDiff(int k1,
     }
 
     DiffList diffList;
-    auto line1Length = (k1 == -1) ? 0 : line1.length;
-    auto line2Length = (k2 == -1) ? 0 : line2.length;
+    int line1Length = (k1 == -1) ? 0 : to!int(line1.length);
+    int line2Length = (k2 == -1) ? 0 : to!int(line2.length);
     if(k1 == -1 || k2 == -1)
     {
         diffList.insertBack(Diff(0, line1Length, line2Length));
@@ -1510,7 +1511,7 @@ DiffList fineDiff(int k1,
     {
         if(line1.length == line2.length && line1 == line2)
         {
-            diffList.insertBack(Diff(line1.length, 0, 0));
+            diffList.insertBack(Diff(to!int(line1.length), 0, 0));
         }
         else
         {

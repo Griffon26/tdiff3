@@ -52,12 +52,12 @@ void main()
     const int count = 3;
 
     shared(SimpleFileLineProvider) lps[count];
-    lps[0] = new shared SimpleFileLineProvider("UTF-8-demo.txt");
-    lps[1] = new shared SimpleFileLineProvider("UTF-8-demo2.txt");
-    lps[2] = new shared SimpleFileLineProvider("test_short.txt");
-    lps[0] = new shared SimpleFileLineProvider("base.txt");
-    lps[1] = new shared SimpleFileLineProvider("contrib1.txt");
-    lps[2] = new shared SimpleFileLineProvider("contrib2.txt");
+    //lps[0] = new shared SimpleFileLineProvider("UTF-8-demo.txt");
+    //lps[1] = new shared SimpleFileLineProvider("UTF-8-demo2.txt");
+    //lps[2] = new shared SimpleFileLineProvider("test_short.txt");
+    lps[0] = new shared SimpleFileLineProvider("/home/griffon26/unison/projects/2014/tdiff3/base.txt");
+    lps[1] = new shared SimpleFileLineProvider("/home/griffon26/unison/projects/2014/tdiff3/contrib1.txt");
+    lps[2] = new shared SimpleFileLineProvider("/home/griffon26/unison/projects/2014/tdiff3/contrib2.txt");
 
     GnuDiff gnuDiff = new GnuDiff("/tmp");
     gnuDiff.setFile(0, lps[0]);
@@ -90,12 +90,9 @@ void main()
 
     writefln("trimDiff3LineList");
     trimDiff3LineList(diff3LineList, lps[0], lps[1], lps[2]);
-    printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
-
-    /* TODO: finediff */
+    //printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
 
     determineFineDiffStyle(diff3LineList, lps[0], lps[1], lps[2]);
-    //writefln("print");
     //printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
 
     writefln("Cleaning up");
