@@ -45,44 +45,6 @@ import modifiedcontentprovider;
 import simplefilelineprovider;
 import ui;
 
-void printDiff3List(Diff3LineList d3ll,
-                    shared ILineProvider lpA,
-                    shared ILineProvider lpB,
-                    shared ILineProvider lpC)
-{
-    const int columnsize = 30;
-    const int linenumsize = 6;
-    foreach(d3l; d3ll)
-    {
-        string lineAText, lineBText, lineCText;
-        if(d3l.lineA != -1)
-        {
-            lineAText = format("%6.6d %-30.30s", d3l.lineA, lpA.get(d3l.lineA).get().replace("\n", "\\n"));
-        }
-        else
-        {
-            lineAText = format("%37s", "");
-        }
-        if(d3l.lineB != -1)
-        {
-            lineBText = format("%6.6d %-30.30s", d3l.lineB, lpB.get(d3l.lineB).get().replace("\n", "\\n"));
-        }
-        else
-        {
-            lineBText = format("%37s", "");
-        }
-        if(d3l.lineC != -1)
-        {
-            lineCText = format("%6.6d %-30.30s", d3l.lineC, lpC.get(d3l.lineC).get().replace("\n", "\\n"));
-        }
-        else
-        {
-            lineCText = format("%37s", "");
-        }
-        writefln("%s %s %s %s %s %s", lineAText, lineBText, lineCText, d3l.bAEqB, d3l.bAEqC, d3l.bBEqC);
-    }
-}
-
 void main()
 {
     setlocale(LC_ALL, "");
@@ -93,9 +55,9 @@ void main()
     lps[0] = new shared SimpleFileLineProvider("UTF-8-demo.txt");
     lps[1] = new shared SimpleFileLineProvider("UTF-8-demo2.txt");
     lps[2] = new shared SimpleFileLineProvider("test_short.txt");
-    lps[0] = new shared SimpleFileLineProvider("/home/griffon26/test/kdiff3/file1.c");
-    lps[1] = new shared SimpleFileLineProvider("/home/griffon26/test/kdiff3/file2.c");
-    lps[2] = new shared SimpleFileLineProvider("/home/griffon26/test/kdiff3/file3.c");
+    lps[0] = new shared SimpleFileLineProvider("base.txt");
+    lps[1] = new shared SimpleFileLineProvider("contrib1.txt");
+    lps[2] = new shared SimpleFileLineProvider("contrib2.txt");
 
     GnuDiff gnuDiff = new GnuDiff("/tmp");
     gnuDiff.setFile(0, lps[0]);

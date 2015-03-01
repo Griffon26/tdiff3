@@ -42,6 +42,44 @@ import common;
 import ilineprovider;
 import myassert;
 
+void printDiff3List(Diff3LineList d3ll,
+                    shared ILineProvider lpA,
+                    shared ILineProvider lpB,
+                    shared ILineProvider lpC)
+{
+    const int columnsize = 30;
+    const int linenumsize = 6;
+    foreach(d3l; d3ll)
+    {
+        string lineAText, lineBText, lineCText;
+        if(d3l.lineA != -1)
+        {
+            lineAText = format("%6.6d %-30.30s", d3l.lineA, lpA.get(d3l.lineA).get().replace("\n", "\\n"));
+        }
+        else
+        {
+            lineAText = format("%37s", "");
+        }
+        if(d3l.lineB != -1)
+        {
+            lineBText = format("%6.6d %-30.30s", d3l.lineB, lpB.get(d3l.lineB).get().replace("\n", "\\n"));
+        }
+        else
+        {
+            lineBText = format("%37s", "");
+        }
+        if(d3l.lineC != -1)
+        {
+            lineCText = format("%6.6d %-30.30s", d3l.lineC, lpC.get(d3l.lineC).get().replace("\n", "\\n"));
+        }
+        else
+        {
+            lineCText = format("%37s", "");
+        }
+        writefln("%s %s %s %s %s %s", lineAText, lineBText, lineCText, d3l.bAEqB, d3l.bAEqC, d3l.bBEqC);
+    }
+}
+
 void validateDiff3LineListForN(Diff3LineList diff3LineList, int n, int leftLine, int rightLine)
 {
     int line = leftLine;
@@ -683,25 +721,35 @@ private void updateDiff3LineListUsingBC(DiffList diffList23, ref Diff3LineList d
             r3b.popFront();
             r3c.popFront();
         }
-        if(d.diff1 > 0)
+
+        auto r3from = r3b;
+        while(d.diff1 > 0)
         {
-            auto r3to = r3b;
-            auto r3from = r3b;
+            /* Move lines in B that are not equal to A or C as far up as they
+             * can, i.e. insert it between the previous line from B and the
+             * lines from A and C that follow it
+             */
             while(r3from.front.lineB != lineB)
             {
                 assert(r3from.front.lineB == -1);
                 r3from.popFront();
             }
-            while(!r3from.empty() && r3to != r3from && !r3from.front.bAEqB && d.diff1 > 0)
+            if(r3from != r3b && !r3from.front.bAEqB)
             {
-                r3to.front.lineB = r3from.front.lineB;
+                Diff3Line d3l;
+                d3l.lineB = lineB;
+                diff3LineList.insertBefore(r3b, d3l);
                 r3from.front.lineB = -1;
-                r3to.popFront();
-                r3from.popFront();
-                lineB++;
-                d.diff1--;
             }
+            else
+            {
+                r3from.popFront();
+                r3b = r3from;
+            }
+            d.diff1--;
+            lineB++;
         }
+
         while(d.diff2 > 0)
         {
             d.diff2--;
@@ -740,89 +788,14 @@ unittest
     updateDiff3LineListUsingBC(dl, d3ll);
 
     auto d3ltuples = d3ll.toTuples;
-    assertEqual(d3ltuples[0], tuple(false, false, false,  4,  0,  7));
-    assertEqual(d3ltuples[1], tuple(false, false, false,  5,  1,  8));
-    assertEqual(d3ltuples[2], tuple(false, false, false,  6, -1,  9));
-    assertEqual(d3ltuples.length, 3);
-}
-
-version(old)
-{
-unittest
-{
-    /* Test for while(d.diff1 > 0)
-     * Check that B (line 2) is moved up enough to make room for an equal C (line 0) */
-    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false,  4, -1,  0),
-                                          tuple(false, false, false,  5,  0,  1),
-                                          tuple(false, false, false,  6,  1,  2),
-                                          tuple(false, false, false,  7,  2,  3)
-                                          ]);
-    DiffList dl = [Diff(0,2,0)];
-
-    updateDiff3LineListUsingBC(dl, d3ll);
-
-    auto d3ltuples = d3ll.toTuples;
-    assertEqual(d3ltuples[0], tuple(false, false, false, -1,  0, -1));
-    assertEqual(d3ltuples[1], tuple(false, false, false,  4, -1,  0));
-    assertEqual(d3ltuples[2], tuple(false, false, false, -1,  1, -1));
-    assertEqual(d3ltuples[3], tuple(false, false, false,  5, -1,  1));
-    assertEqual(d3ltuples[4], tuple(false, false, false,  6, -1,  2));
-    assertEqual(d3ltuples[5], tuple(false, false, false,  7,  2,  3));
-    assertEqual(d3ltuples.length, 6);
-}
-}
-else
-{
-unittest
-{
-    /* Test for while(d.diff1 > 0)
-     * Check that B (line 2) is moved up enough to make room for an equal C (line 0) */
-    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false,  4, -1,  0),
-                                          tuple(false, false, false,  5,  0,  1),
-                                          tuple(false, false, false,  6,  1,  2),
-                                          tuple(false, false, false,  7,  2,  3)
-                                          ]);
-    DiffList dl = [Diff(0,2,0)];
-
-    updateDiff3LineListUsingBC(dl, d3ll);
-
-    auto d3ltuples = d3ll.toTuples;
-    assertEqual(d3ltuples[0], tuple(false, false, false,  4,  0,  0));
-    assertEqual(d3ltuples[1], tuple(false, false, false,  5,  1,  1));
-    assertEqual(d3ltuples[2], tuple(false, false, false,  6, -1,  2));
-    assertEqual(d3ltuples[3], tuple(false, false, false,  7,  2,  3));
-    assertEqual(d3ltuples.length, 4);
-}
-}
-
-version(old){
-unittest
-{
-    /* Test for while(d.diff1 > 0)
-     * Check that B (line 2) is moved up enough to make room for an equal C (line 0) */
-    Diff3LineList d3ll = toDiff3LineList([tuple(false, false, false,  4, -1,  0),
-                                          tuple(false, false, false,  5,  0,  1),
-                                          tuple(false, false, false,  6,  1,  2),
-                                          tuple(false, false, false,  7,  2,  3)
-                                          ]);
-    DiffList dl = [Diff(0,2,0),
-                   Diff(1,0,0)];
-
-    updateDiff3LineListUsingBC(dl, d3ll);
-
-    auto d3ltuples = d3ll.toTuples;
     assertEqual(d3ltuples[0], tuple(false, false, false, -1,  0, -1));
     assertEqual(d3ltuples[1], tuple(false, false, false, -1,  1, -1));
-    assertEqual(d3ltuples[2], tuple(false, false, true,   4,  2,  0));
-    assertEqual(d3ltuples[3], tuple(false, false, false, -1, -1, -1));
-    assertEqual(d3ltuples[4], tuple(false, false, false,  5, -1,  1));
-    assertEqual(d3ltuples[5], tuple(false, false, false,  6, -1,  2));
-    assertEqual(d3ltuples[6], tuple(false, false, false,  7, -1,  3));
-    assertEqual(d3ltuples.length, 7);
+    assertEqual(d3ltuples[2], tuple(false, false, false,  4, -1,  7));
+    assertEqual(d3ltuples[3], tuple(false, false, false,  5, -1,  8));
+    assertEqual(d3ltuples[4], tuple(false, false, false,  6, -1,  9));
+    assertEqual(d3ltuples.length, 5);
 }
-}
-else
-{
+
 unittest
 {
     /* Test for while(d.diff1 > 0)
@@ -846,6 +819,63 @@ unittest
     assertEqual(d3ltuples[5], tuple(false, false, false,  7, -1,  3));
     assertEqual(d3ltuples.length, 6);
 }
+
+unittest
+{
+/*
+difflist23: [Diff(2, 1, 1), Diff(1, 2, 17), Diff(32, 0, 0)]
+
+000000 /* -*- Mode: C; tab-width: 8;  000000 /* -*- Mode: C; tab-width: 8;  000000 /* -*- Mode: C; tab-width: 8;  true true true
+000001 /*\n                           000001 /*\n                           000001 /*\n                           true true true
+000002  * Copyright (C) 2002 CodeFact 000002  * Copyright (A) 2002 CodeFact 000002  * Copyright (C) 2002 CodeFact false true false
+                                                                            000003  * Copyright (C) 2002 Richard  false false false
+                                                                            000004  * Copyright (A) 2002 Mikael H false false false
+000003  * Copyright (A) 2002 Richard  000003  * Copyright (C) 2002 Richard                                        false false false
+000004  * Copyright (C) 2002 Mikael H 000004  * Copyright (C) 2002 Mikael H                                       true false false
+000005  * Copyright (A) 2004 Alvaro d 000005  * Copyright (C) 2004 Alvaro d 000005  * Copyright (A) 2004 Alvaro d false true false
+*/
+
+    Diff3LineList d3ll = toDiff3LineList([tuple(true,  true,  true,   0,  0,  0),
+                                          tuple(true,  true,  true,   1,  1,  1),
+                                          tuple(false, true,  false,  2,  2,  2),
+                                          tuple(false, false, false, -1, -1,  3),
+                                          tuple(false, false, false, -1, -1,  4),
+                                          tuple(false, false, false,  3,  3, -1),
+                                          tuple(true,  false, false,  4,  4, -1),
+                                          tuple(false, true,  false,  5,  5,  5),
+                                          ]);
+    DiffList dl = [Diff(2,1,1),
+                   Diff(1,2,2)];
+
+    writefln("------------------------------------------");
+    updateDiff3LineListUsingBC(dl, d3ll);
+    writefln("------------------------------------------");
+
+
+/*
+000000 /* -*- Mode: C; tab-width: 8;  000000 /* -*- Mode: C; tab-width: 8;  000000 /* -*- Mode: C; tab-width: 8;  true true true
+000001 /*\n                           000001 /*\n                           000001 /*\n                           true true true
+000002  * Copyright (C) 2002 CodeFact                                       000002  * Copyright (C) 2002 CodeFact false true false
+                                      000002  * Copyright (A) 2002 CodeFact 000003  * Copyright (C) 2002 Richard  false false true
+                                      000003  * Copyright (C) 2002 Richard                                        false false false
+                                                                            000004  * Copyright (A) 2002 Mikael H false false false
+000003  * Copyright (A) 2002 Richard                                                                              false false false
+000004  * Copyright (C) 2002 Mikael H 000004  * Copyright (C) 2002 Mikael H                                       true false false
+000005  * Copyright (A) 2004 Alvaro d 000005  * Copyright (C) 2004 Alvaro d 000005  * Copyright (A) 2004 Alvaro d false true false
+
+*/
+
+    auto d3ltuples = d3ll.toTuples;
+    assertEqual(d3ltuples[0], tuple(true,  true,  true,   0,  0,  0));
+    assertEqual(d3ltuples[1], tuple(true,  true,  true,   1,  1,  1));
+    assertEqual(d3ltuples[2], tuple(false, true,  false,  2,  2,  2));
+    assertEqual(d3ltuples[3], tuple(false, false, true,  -1,  3,  3));
+    assertEqual(d3ltuples[4], tuple(false, false, false, -1, -1,  4));
+    assertEqual(d3ltuples[5], tuple(false, false, false,  3, -1, -1));
+    assertEqual(d3ltuples[6], tuple(true,  false, false,  4,  4, -1));
+    assertEqual(d3ltuples[7], tuple(false, true,  false,  5,  5,  5));
+    assertEqual(d3ltuples.length, 8);
+
 }
 
 Diff3LineList calcDiff3LineList(DiffList diffList12, DiffList diffList13, DiffList diffList23)
@@ -925,6 +955,8 @@ void trimDiff3LineList(ref Diff3LineList d3ll,
         {
             r3a.front.lineA = r3.front.lineA;
             r3.front.lineA = -1;
+            assert(!r3.front.bAEqB);
+            assert(!r3.front.bAEqC);
 
             if(r3a.front.lineB != -1 && lpA.get(r3a.front.lineA) == lpB.get(r3a.front.lineB))
             {
@@ -944,6 +976,8 @@ void trimDiff3LineList(ref Diff3LineList d3ll,
         {
             r3b.front.lineB = r3.front.lineB;
             r3.front.lineB = -1;
+            assert(!r3.front.bAEqB);
+            assert(!r3.front.bBEqC);
 
             if(r3b.front.lineA != -1 && lpA.get(r3b.front.lineA) == lpB.get(r3b.front.lineB))
             {
@@ -963,6 +997,8 @@ void trimDiff3LineList(ref Diff3LineList d3ll,
         {
             r3c.front.lineC = r3.front.lineC;
             r3.front.lineC = -1;
+            assert(!r3.front.bAEqC);
+            assert(!r3.front.bBEqC);
 
             if(r3c.front.lineA != -1 && lpA.get(r3c.front.lineA) == lpC.get(r3c.front.lineC))
             {
@@ -1093,10 +1129,22 @@ void trimDiff3LineList(ref Diff3LineList d3ll,
     }
 
     /*
-     * TODO: remove empty entries from the trimmed list
+     * TODO: find a cleaner way to remove empty entries.
     d3ll = remove!(d => (d.lineA == -1 &&
                          d.lineB == -1 &&
                          d.lineC == -1))(d3ll[]);*/
+    r3 = d3ll[];
+    while(!r3.empty())
+    {
+        auto el = r3.take(1);
+        r3.popFront();
+        if(el.front.lineA == -1 &&
+           el.front.lineB == -1 &&
+           el.front.lineC == -1)
+        {
+            d3ll.linearRemove(el);
+        }
+    }
 
 }
 

@@ -61,7 +61,7 @@ public:
         init_color(Color.RED, 1000, 0, 0);
         init_color(Color.BLUE, 0, 0, 800);
         init_color(Color.PURPLE, 600, 0, 600);
-        init_color(Color.GREEN, 0, 0, 600);
+        init_color(Color.GREEN, 0, 600, 0);
         init_color(Color.WHITE, 1000, 1000, 1000);
         init_color(Color.GRAY, 900, 900, 900);
 
