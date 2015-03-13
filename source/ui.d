@@ -27,24 +27,30 @@ module ui;
 
 import deimos.ncurses.curses;
 import std.algorithm;
+import std.conv;
 
 import colors;
+import common;
 import contenteditor;
 import editablecontentpane;
 import icontentprovider;
 import iformattedcontentprovider;
 import inputpanes;
 import modifiedcontentprovider;
+import theme;
 
 class Ui
 {
 private:
     InputPanes m_inputPanes;
     EditableContentPane m_editableContentPane;
+    Theme m_theme;
 
 public:
     this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps, ModifiedContentProvider modifiedContentProvider)
     {
+        m_theme = new Theme();
+
         initscr();
         cbreak();
         noecho();
@@ -57,23 +63,97 @@ public:
         }
 
         start_color();
-        init_color(Color.BLACK, 0, 0, 0);
-        init_color(Color.RED, 1000, 0, 0);
-        init_color(Color.BLUE, 0, 0, 800);
-        init_color(Color.PURPLE, 600, 0, 600);
-        init_color(Color.GREEN, 0, 600, 0);
-        init_color(Color.WHITE, 1000, 1000, 1000);
-        init_color(Color.GRAY, 900, 900, 900);
 
-        //init_pair(ColorPair.NORMAL, Color.BLACK, Color.WHITE);
-        assume_default_colors(Color.BLACK, Color.WHITE);
-        init_pair(ColorPair.A_B_SAME, Color.PURPLE, Color.GRAY);
-        init_pair(ColorPair.A_C_SAME, Color.GREEN, Color.GRAY);
-        init_pair(ColorPair.B_C_SAME, Color.BLUE, Color.GRAY);
-        init_pair(ColorPair.DIFFERENT, Color.RED, Color.GRAY);
+        short colorcube(short colorcubesize, short r, short g, short b)
+        {
+            short colorcubeoffset = 16;
+            return to!short(colorcubeoffset + r * colorcubesize * colorcubesize + g * colorcubesize + b);
+        }
+
+        short grayscale(short colorcubesize, short gray)
+        {
+            auto grayscalerampoffset = 16 + colorcubesize * colorcubesize * colorcubesize;
+            return to!short(grayscalerampoffset + gray);
+        }
+
+
+        // KDiff3's colors in RGB:
+        //   black     0,   0,   0
+        //   red     255,   0,   0
+        //   blue      0,   0, 200
+        //   purple  150,   0, 150
+        //   green     0, 150,   0
+        //   white   255, 255, 255
+        //   gray    224, 224, 224
+
+        short colorcubesize;
+        short black, red, blue, purple, green, white, gray;
+
+        switch(COLORS)
+        {
+        case 256:
+            // Closest approximation of KDiff3's colors using XTerm's 256-color palette
+            colorcubesize = 6;
+            black = colorcube(colorcubesize, 0,0,0);
+            red = colorcube(colorcubesize, 5,0,0);
+            blue = colorcube(colorcubesize, 0,0,4);
+            purple = colorcube(colorcubesize, 2,0,2);
+            green = colorcube(colorcubesize, 0,2,0);
+            white = colorcube(colorcubesize, 5,5,5);
+            gray = grayscale(colorcubesize, 21);
+            break;
+        case 88:
+            // Closest approximation of KDiff3's colors using XTerm's 88-color palette
+            colorcubesize = 4;
+            black = colorcube(colorcubesize, 0,0,0);
+            red = colorcube(colorcubesize, 3,0,0);
+            blue = colorcube(colorcubesize, 0,0,2);
+            purple = colorcube(colorcubesize, 1,0,1);
+            green = colorcube(colorcubesize, 0,1,0);
+            white = colorcube(colorcubesize, 3,3,3);
+            gray = grayscale(colorcubesize, 7);
+            break;
+        default:
+            colorcubesize = 0;
+            break;
+        }
+
+        if(colorcubesize > 0)
+        {
+            assume_default_colors(black, white);
+
+            init_pair(ColorPair.DIFFERENT, red,    gray);
+            init_pair(ColorPair.A_B_SAME,  purple, gray);
+            init_pair(ColorPair.A_C_SAME,  green,  gray);
+            init_pair(ColorPair.B_C_SAME,  blue,   gray);
+            init_pair(ColorPair.NORMAL,    black,  white);
+
+            m_theme.setDiffStyleAttributes(DiffStyle.DIFFERENT, false, COLOR_PAIR(ColorPair.DIFFERENT));
+            m_theme.setDiffStyleAttributes(DiffStyle.A_B_SAME, false, COLOR_PAIR(ColorPair.A_B_SAME));
+            m_theme.setDiffStyleAttributes(DiffStyle.A_C_SAME, false, COLOR_PAIR(ColorPair.A_C_SAME));
+            m_theme.setDiffStyleAttributes(DiffStyle.B_C_SAME, false, COLOR_PAIR(ColorPair.B_C_SAME));
+            m_theme.setDiffStyleAttributes(DiffStyle.ALL_SAME, false, COLOR_PAIR(ColorPair.NORMAL));
+        }
+        else
+        {
+            assume_default_colors(Color.WHITE, Color.BLACK);
+
+            init_pair(ColorPair.DIFFERENT, Color.RED, Color.BLACK);
+            init_pair(ColorPair.A_B_SAME, Color.PURPLE, Color.BLACK);
+            init_pair(ColorPair.A_C_SAME, Color.GREEN, Color.BLACK);
+            init_pair(ColorPair.B_C_SAME, Color.BLUE, Color.BLACK);
+            init_pair(ColorPair.NORMAL, Color.WHITE, Color.BLACK);
+
+            m_theme.setDiffStyleAttributes(DiffStyle.DIFFERENT, false, COLOR_PAIR(ColorPair.DIFFERENT) );
+            m_theme.setDiffStyleAttributes(DiffStyle.A_B_SAME, false, COLOR_PAIR(ColorPair.A_B_SAME) );
+            m_theme.setDiffStyleAttributes(DiffStyle.A_C_SAME, false, COLOR_PAIR(ColorPair.A_C_SAME) );
+            m_theme.setDiffStyleAttributes(DiffStyle.B_C_SAME, false, COLOR_PAIR(ColorPair.B_C_SAME) | A_BOLD);
+            m_theme.setDiffStyleAttributes(DiffStyle.ALL_SAME, false, COLOR_PAIR(ColorPair.NORMAL));
+        }
+
         bkgd(COLOR_PAIR(ColorPair.NORMAL));
 
-        m_inputPanes = new InputPanes(cps, lnps);
+        m_inputPanes = new InputPanes(cps, lnps, m_theme);
 
         auto contentEditor = new ContentEditor(modifiedContentProvider);
         m_editableContentPane = new EditableContentPane(modifiedContentProvider, contentEditor);

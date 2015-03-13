@@ -34,6 +34,7 @@ import contentpane;
 import formattedcontentpane;
 import icontentprovider;
 import iformattedcontentprovider;
+import theme;
 
 /**
  * InputPanes manages the FormattedContentPanes for the three input files and
@@ -53,7 +54,7 @@ private:
     int nrOfPanes = 3;
 
 public:
-    this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps)
+    this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps, Theme theme)
     {
         assert(cps[0].getContentHeight() == cps[1].getContentHeight() &&
                cps[0].getContentHeight() == cps[2].getContentHeight());
@@ -69,7 +70,7 @@ public:
         for(int i = 0; i < nrOfPanes; i++)
         {
             m_lineNumberPanes[i] = new ContentPane(lnps[i]);
-            m_inputPanes[i] = new FormattedContentPane(cps[i]);
+            m_inputPanes[i] = new FormattedContentPane(cps[i], theme);
         }
     }
 

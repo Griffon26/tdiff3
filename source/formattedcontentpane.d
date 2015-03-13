@@ -32,6 +32,7 @@ import colors;
 import common;
 import contentpane;
 import iformattedcontentprovider;
+import theme;
 
 /**
  * FormattedContentPane is a ContentPane that shows content of an IFormattedContentProvider
@@ -39,30 +40,13 @@ import iformattedcontentprovider;
 class FormattedContentPane: ContentPane
 {
     private IFormattedContentProvider m_fcp;
+    private Theme m_theme;
 
-    this(IFormattedContentProvider fcp)
+    this(IFormattedContentProvider fcp, Theme theme)
     {
         m_fcp = fcp;
+        m_theme = theme;
         super(fcp);
-    }
-
-    private ColorPair diffStyleToColor(DiffStyle d)
-    {
-        switch(d)
-        {
-        case DiffStyle.ALL_SAME:
-            return ColorPair.NORMAL;
-        case DiffStyle.A_B_SAME:
-            return ColorPair.A_B_SAME;
-        case DiffStyle.A_C_SAME:
-            return ColorPair.A_C_SAME;
-        case DiffStyle.B_C_SAME:
-            return ColorPair.B_C_SAME;
-        case DiffStyle.DIFFERENT:
-            return ColorPair.DIFFERENT;
-        default:
-            assert(false);
-        }
     }
 
     override protected void drawMissingLine(int contentLine)
@@ -75,22 +59,20 @@ class FormattedContentPane: ContentPane
         }
 
         int offset = 0;
-        ColorPair defaultColor = diffStyleToColor(DiffStyle.ALL_SAME);
+        auto defaultAttributes = m_theme.getDiffStyleAttributes(DiffStyle.ALL_SAME, false);
 
         if(styleList.empty)
         {
-            wattron(m_pad, COLOR_PAIR(defaultColor));
+            wattrset(m_pad, defaultAttributes);
             wprintw(m_pad, toStringz(line));
-            wattroff(m_pad, COLOR_PAIR(defaultColor));
         }
         else
         {
             foreach(styleFragment; styleList)
             {
-                auto colorPair = COLOR_PAIR(diffStyleToColor(styleFragment.style));
-                wattron(m_pad, colorPair);
+                auto attributes = m_theme.getDiffStyleAttributes(styleFragment.style, false);
+                wattrset(m_pad, attributes);
                 wprintw(m_pad, toStringz(line[offset..offset + styleFragment.length]));
-                wattroff(m_pad, colorPair);
                 offset += styleFragment.length;
             }
         }

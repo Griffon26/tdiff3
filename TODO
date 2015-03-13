@@ -7,6 +7,18 @@ functionality.
 
 - fix bug: d3ll should not have any completely empty entries at the end
 - implement ncurses ui
+  - graceful degradation of colors
+    rxvt-unicode: 88, changeable
+    xterm: 8                                  ****************** problem ********************
+    xterm-256color: 256, changeable
+    linux: 8, changeable
+    screen-256color within urxvt: 256 (screen converts 256 downto 88) ***** problem *****
+    screen-256color within xterm: 256 (screen converts 256 downto 8) ****** problem ***********
+    screen-256color within xterm-256color: 256
+    screen within xterm: 8 *** problem ***
+    screen within urxvt: 8 *** problem ***
+
+    
   - also support just 2 files
   - implement resizing when the terminal is resized
   - add scrollbar (read-only, just to show where you are in the file)
