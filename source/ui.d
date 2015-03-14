@@ -46,38 +46,24 @@ private:
     EditableContentPane m_editableContentPane;
     Theme m_theme;
 
-public:
-    this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps, ModifiedContentProvider modifiedContentProvider)
+    short colorcube(short colorcubesize, short r, short g, short b)
     {
-        m_theme = new Theme();
+        short colorcubeoffset = 16;
+        return to!short(colorcubeoffset + r * colorcubesize * colorcubesize + g * colorcubesize + b);
+    }
 
-        initscr();
-        cbreak();
-        noecho();
-        keypad(stdscr, true);
+    short grayscale(short colorcubesize, short gray)
+    {
+        auto grayscalerampoffset = 16 + colorcubesize * colorcubesize * colorcubesize;
+        return to!short(grayscalerampoffset + gray);
+    }
 
-        if(!has_colors())
-        {
-            endwin();
-            throw new Exception("Your terminal does not support color\n");
-        }
+    void set_light_theme(Theme theme)
+    {
+        short colorcubesize;
+        short black, red, blue, purple, green, white, gray;
 
-        start_color();
-
-        short colorcube(short colorcubesize, short r, short g, short b)
-        {
-            short colorcubeoffset = 16;
-            return to!short(colorcubeoffset + r * colorcubesize * colorcubesize + g * colorcubesize + b);
-        }
-
-        short grayscale(short colorcubesize, short gray)
-        {
-            auto grayscalerampoffset = 16 + colorcubesize * colorcubesize * colorcubesize;
-            return to!short(grayscalerampoffset + gray);
-        }
-
-
-        // KDiff3's colors in RGB:
+        // KDiff3's default colors in RGB:
         //   black     0,   0,   0
         //   red     255,   0,   0
         //   blue      0,   0, 200
@@ -85,9 +71,6 @@ public:
         //   green     0, 150,   0
         //   white   255, 255, 255
         //   gray    224, 224, 224
-
-        short colorcubesize;
-        short black, red, blue, purple, green, white, gray;
 
         switch(COLORS)
         {
@@ -114,25 +97,102 @@ public:
             gray = grayscale(colorcubesize, 7);
             break;
         default:
-            colorcubesize = 0;
-            break;
+            assert(false);
         }
 
-        if(colorcubesize > 0)
+        assume_default_colors(black, white);
+
+        init_pair(ColorPair.DIFFERENT, red,    gray);
+        init_pair(ColorPair.A_B_SAME,  purple, gray);
+        init_pair(ColorPair.A_C_SAME,  green,  gray);
+        init_pair(ColorPair.B_C_SAME,  blue,   gray);
+        init_pair(ColorPair.NORMAL,    black,  white);
+
+        theme.setDiffStyleAttributes(DiffStyle.DIFFERENT, false, COLOR_PAIR(ColorPair.DIFFERENT));
+        theme.setDiffStyleAttributes(DiffStyle.A_B_SAME, false, COLOR_PAIR(ColorPair.A_B_SAME));
+        theme.setDiffStyleAttributes(DiffStyle.A_C_SAME, false, COLOR_PAIR(ColorPair.A_C_SAME));
+        theme.setDiffStyleAttributes(DiffStyle.B_C_SAME, false, COLOR_PAIR(ColorPair.B_C_SAME));
+        theme.setDiffStyleAttributes(DiffStyle.ALL_SAME, false, COLOR_PAIR(ColorPair.NORMAL));
+    }
+
+    void set_dark_theme(Theme theme)
+    {
+        short colorcubesize;
+        short black, red, blue, purple, green, darkgray, gray;
+
+        // KDiff3's default colors in RGB:
+        //   black     0,   0,   0
+        //   red     255,   0,   0
+        //   blue      0,   0, 200
+        //   purple  150,   0, 150
+        //   green     0, 150,   0
+        //   white   255, 255, 255
+        //   gray    224, 224, 224
+
+        switch(COLORS)
         {
-            assume_default_colors(black, white);
+        case 256:
+            // Closest approximation of KDiff3's colors using XTerm's 256-color palette
+            colorcubesize = 6;
+            black = colorcube(colorcubesize, 0,0,0);
+            red = colorcube(colorcubesize, 4,0,0);
+            blue = colorcube(colorcubesize, 0,2,5);
+            purple = colorcube(colorcubesize, 4,0,4);
+            green = colorcube(colorcubesize, 0,4,0);
+            darkgray = grayscale(colorcubesize, 4); // 8
+            gray = grayscale(colorcubesize, 21);
+            break;
+        case 88:
+            // Closest approximation of KDiff3's colors using XTerm's 88-color palette
+            colorcubesize = 4;
+            black = colorcube(colorcubesize, 0,0,0);
+            red = colorcube(colorcubesize, 2,0,0);
+            blue = colorcube(colorcubesize, 0,1,3);
+            purple = colorcube(colorcubesize, 2,0,2);
+            green = colorcube(colorcubesize, 0,2,0);
+            darkgray = grayscale(colorcubesize, 0); // 1
+            gray = grayscale(colorcubesize, 7);
+            break;
+        default:
+            assert(false);
+        }
 
-            init_pair(ColorPair.DIFFERENT, red,    gray);
-            init_pair(ColorPair.A_B_SAME,  purple, gray);
-            init_pair(ColorPair.A_C_SAME,  green,  gray);
-            init_pair(ColorPair.B_C_SAME,  blue,   gray);
-            init_pair(ColorPair.NORMAL,    black,  white);
+        assume_default_colors(gray, black);
 
-            m_theme.setDiffStyleAttributes(DiffStyle.DIFFERENT, false, COLOR_PAIR(ColorPair.DIFFERENT));
-            m_theme.setDiffStyleAttributes(DiffStyle.A_B_SAME, false, COLOR_PAIR(ColorPair.A_B_SAME));
-            m_theme.setDiffStyleAttributes(DiffStyle.A_C_SAME, false, COLOR_PAIR(ColorPair.A_C_SAME));
-            m_theme.setDiffStyleAttributes(DiffStyle.B_C_SAME, false, COLOR_PAIR(ColorPair.B_C_SAME));
-            m_theme.setDiffStyleAttributes(DiffStyle.ALL_SAME, false, COLOR_PAIR(ColorPair.NORMAL));
+        init_pair(ColorPair.DIFFERENT, red,    darkgray);
+        init_pair(ColorPair.A_B_SAME,  purple, darkgray);
+        init_pair(ColorPair.A_C_SAME,  green,  darkgray);
+        init_pair(ColorPair.B_C_SAME,  blue,   darkgray);
+        init_pair(ColorPair.NORMAL,    gray,   black);
+
+        theme.setDiffStyleAttributes(DiffStyle.DIFFERENT, false, COLOR_PAIR(ColorPair.DIFFERENT));
+        theme.setDiffStyleAttributes(DiffStyle.A_B_SAME, false, COLOR_PAIR(ColorPair.A_B_SAME));
+        theme.setDiffStyleAttributes(DiffStyle.A_C_SAME, false, COLOR_PAIR(ColorPair.A_C_SAME));
+        theme.setDiffStyleAttributes(DiffStyle.B_C_SAME, false, COLOR_PAIR(ColorPair.B_C_SAME));
+        theme.setDiffStyleAttributes(DiffStyle.ALL_SAME, false, COLOR_PAIR(ColorPair.NORMAL));
+    }
+
+public:
+    this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps, ModifiedContentProvider modifiedContentProvider)
+    {
+        m_theme = new Theme();
+
+        initscr();
+        cbreak();
+        noecho();
+        keypad(stdscr, true);
+
+        if(!has_colors())
+        {
+            endwin();
+            throw new Exception("Your terminal does not support color\n");
+        }
+
+        start_color();
+
+        if(COLORS == 88 || COLORS == 256)
+        {
+            set_dark_theme(m_theme);
         }
         else
         {
