@@ -25,21 +25,23 @@
  */
 module theme;
 
-import common;
+import core.stdc.config;
 import std.stdio;
+
+import common;
 
 class Theme
 {
-    private uint[2][DiffStyle.max + 1] m_attributes;
+    private c_ulong[2][DiffStyle.max + 1] m_attributes;
     private bool[DiffStyle.max + 1] m_initialized;
 
-    void setDiffStyleAttributes(DiffStyle d, bool selected, uint attr)
+    void setDiffStyleAttributes(DiffStyle d, bool selected, c_ulong attr)
     {
         m_attributes[d][selected ? 1 : 0] = attr;
         m_initialized[d] = true;
     }
 
-    uint getDiffStyleAttributes(DiffStyle d, bool selected)
+    c_ulong getDiffStyleAttributes(DiffStyle d, bool selected)
     {
         assert(m_initialized[d]);
         return m_attributes[d][selected ? 1 : 0];
