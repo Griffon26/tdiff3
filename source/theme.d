@@ -30,16 +30,16 @@ import std.stdio;
 
 class Theme
 {
-    private ulong[2][DiffStyle.max + 1] m_attributes;
+    private uint[2][DiffStyle.max + 1] m_attributes;
     private bool[DiffStyle.max + 1] m_initialized;
 
-    void setDiffStyleAttributes(DiffStyle d, bool selected, ulong attr)
+    void setDiffStyleAttributes(DiffStyle d, bool selected, uint attr)
     {
         m_attributes[d][selected ? 1 : 0] = attr;
         m_initialized[d] = true;
     }
 
-    ulong getDiffStyleAttributes(DiffStyle d, bool selected)
+    uint getDiffStyleAttributes(DiffStyle d, bool selected)
     {
         assert(m_initialized[d]);
         return m_attributes[d][selected ? 1 : 0];

@@ -25,7 +25,9 @@
  */
 module formattedcontentpane;
 
+import core.stdc.config;
 import deimos.ncurses.curses;
+import std.conv;
 import std.string;
 
 import colors;
@@ -63,7 +65,7 @@ class FormattedContentPane: ContentPane
 
         if(styleList.empty)
         {
-            wattrset(m_pad, defaultAttributes);
+            wattrset(m_pad, to!c_ulong(defaultAttributes));
             wprintw(m_pad, toStringz(line));
         }
         else
@@ -71,7 +73,7 @@ class FormattedContentPane: ContentPane
             foreach(styleFragment; styleList)
             {
                 auto attributes = m_theme.getDiffStyleAttributes(styleFragment.style, false);
-                wattrset(m_pad, attributes);
+                wattrset(m_pad, to!c_ulong(attributes));
                 wprintw(m_pad, toStringz(line[offset..offset + styleFragment.length]));
                 offset += styleFragment.length;
             }
