@@ -132,7 +132,6 @@ private:
         switch(COLORS)
         {
         case 256:
-            // Closest approximation of KDiff3's colors using XTerm's 256-color palette
             colorcubesize = 6;
             black = colorcube(colorcubesize, 0,0,0);
             red = colorcube(colorcubesize, 4,0,0);
@@ -143,7 +142,6 @@ private:
             gray = grayscale(colorcubesize, 21);
             break;
         case 88:
-            // Closest approximation of KDiff3's colors using XTerm's 88-color palette
             colorcubesize = 4;
             black = colorcube(colorcubesize, 0,0,0);
             red = colorcube(colorcubesize, 2,0,0);

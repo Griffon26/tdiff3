@@ -33,8 +33,9 @@ import contentpane;
 
 
 /**
-  * EditableContentPane handles keyboard input from ncurses and translates it
-  * into editing commands that it passes on to ContentEditor.
+  * EditableContentPane is a ContentPane that handles keyboard input from
+  * ncurses and translates it into editing commands that it passes on to
+  * ContentEditor.
   *
   * <img src="http://yuml.me/diagram/scruffy/class/
   *           [ContentPane]^-[EditableContentPane {bg:limegreen}],
