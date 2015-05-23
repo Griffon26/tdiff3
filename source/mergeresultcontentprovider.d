@@ -29,6 +29,7 @@ import std.algorithm;
 import std.container;
 import std.container.util;
 import std.conv;
+import std.stdio;
 import std.string;
 import std.typecons;
 
@@ -52,7 +53,7 @@ enum LineState
     NONE
 }
 
-class MergeResultLine
+struct MergeResultLine
 {
     LineState lineState;
     LineSource lineSource;
@@ -70,21 +71,15 @@ struct LineNumberRange
     int lastLine;
 }
 
-enum SectionType
-{
-    NO_CONFLICT,
-    UNRESOLVED_CONFLICT,
-    RESOLVED_CONFLICT
-}
-
 class MergeResultSection
 {
 private:
     static immutable int DEFAULT_LINE_SOURCE = LineSource.C;
 
     LineNumberRange[3] m_inputLineNumbers;
+    LineNumberRange m_diff3LineNumbers;
 
-    SectionType m_sectionType;
+    bool m_isConflict;
     MergeResultLine[] m_mergeResultLines;
 
 public:
@@ -96,54 +91,79 @@ public:
 
     int outputSize()
     {
-        if(m_sectionType == SectionType.NO_CONFLICT)
+        if(m_isConflict)
         {
-            return m_inputLineNumbers[DEFAULT_LINE_SOURCE].lastLine - m_inputLineNumbers[DEFAULT_LINE_SOURCE].firstLine + 1;
-        }
-        else if(m_sectionType == SectionType.UNRESOLVED_CONFLICT)
-        {
-            return 1;
+            auto count = to!int(m_mergeResultLines.length);
+            if(count == 0)
+            {
+                count = 1;
+            }
+            return count;
         }
         else
         {
-            return to!int(m_mergeResultLines.length);
+            return m_inputLineNumbers[DEFAULT_LINE_SOURCE].lastLine - m_inputLineNumbers[DEFAULT_LINE_SOURCE].firstLine + 1;
         }
+    }
+
+    void toggle(LineSource lineSource)
+    {
+        auto filtered_lines = m_mergeResultLines.where( (MergeResultLine mrl) { return mrl.lineSource != lineSource; } );
+        if(filtered_lines.length == m_mergeResultLines.length)
+        {
+            for(auto inputLineNumber = m_inputLineNumbers[lineSource].firstLine;
+                inputLineNumber <= m_inputLineNumbers[lineSource].lastLine;
+                inputLineNumber++)
+            {
+                MergeResultLine mergeResultLine;
+                mergeResultLine.lineState = LineState.ORIGINAL;
+                mergeResultLine.lineSource = lineSource;
+                mergeResultLine.lineNumber = inputLineNumber;
+
+                filtered_lines ~= mergeResultLine;
+            }
+        }
+
+        m_mergeResultLines = filtered_lines;
     }
 
     Tuple!(LineState, LineSource, int) getLineInfo(int relativeLineNumber)
     {
-        final switch(m_sectionType)
+        if(m_isConflict)
         {
-        case SectionType.NO_CONFLICT:
+            if(m_mergeResultLines.length == 0)
+            {
+                return tuple(LineState.NONE, LineSource.UNDEFINED, -1);
+            }
+            else
+            {
+                assert(relativeLineNumber < m_mergeResultLines.length);
+                auto mergeResultLine = m_mergeResultLines[relativeLineNumber];
+                switch(mergeResultLine.lineState)
+                {
+                case LineState.EDITED:
+                    return tuple(LineState.EDITED, LineSource.UNDEFINED, relativeLineNumber);
+                case LineState.ORIGINAL:
+                    return tuple(LineState.ORIGINAL, mergeResultLine.lineSource, mergeResultLine.lineNumber);
+                case LineState.NONE:
+                default:
+                    assert(false);
+                }
+            }
+        }
+        else
+        {
             auto inputLineNumber = m_inputLineNumbers[DEFAULT_LINE_SOURCE].firstLine + relativeLineNumber;
             assert(inputLineNumber <= m_inputLineNumbers[DEFAULT_LINE_SOURCE].lastLine);
 
             return tuple(LineState.ORIGINAL, LineSource.C, inputLineNumber);
-
-        case SectionType.UNRESOLVED_CONFLICT:
-            return tuple(LineState.NONE, LineSource.init, -1);
-
-        case SectionType.RESOLVED_CONFLICT:
-            assert(relativeLineNumber < m_mergeResultLines.length);
-            auto mergeResultLine = m_mergeResultLines[relativeLineNumber];
-            switch(mergeResultLine.lineState)
-            {
-            case LineState.EDITED:
-                return tuple(LineState.EDITED, LineSource.UNDEFINED, relativeLineNumber);
-            case LineState.NONE:
-                return tuple(LineState.NONE, LineSource.UNDEFINED, -1);
-            case LineState.ORIGINAL:
-                return tuple(LineState.ORIGINAL, mergeResultLine.lineSource, mergeResultLine.lineNumber);
-            default:
-                assert(false);
-            }
         }
     }
 
     /* Retrieve a line from this section. The first line of the section is line 0. */
     string getEditedLine(int relativeLineNumber)
     {
-        assert(m_sectionType != SectionType.NO_CONFLICT);
+        assert(m_isConflict);
         assert(relativeLineNumber < m_mergeResultLines.length);
         assertEqual(m_mergeResultLines[relativeLineNumber].lineSource, LineState.EDITED);
 
@@ -153,20 +173,22 @@ public:
 
 version(unittest)
 {
-    private Tuple!(SectionType, int, int, int, int, int, int) toTuple(MergeResultSection section)
+    private Tuple!(bool, int, int, int, int, int, int, int, int) toTuple(MergeResultSection section)
     {
-        return tuple(section.m_sectionType,
+        return tuple(section.m_isConflict,
                      section.m_inputLineNumbers[LineSource.A].firstLine,
                      section.m_inputLineNumbers[LineSource.A].lastLine,
                      section.m_inputLineNumbers[LineSource.B].firstLine,
                      section.m_inputLineNumbers[LineSource.B].lastLine,
                      section.m_inputLineNumbers[LineSource.C].firstLine,
-                     section.m_inputLineNumbers[LineSource.C].lastLine);
+                     section.m_inputLineNumbers[LineSource.C].lastLine,
+                     section.m_diff3LineNumbers.firstLine,
+                     section.m_diff3LineNumbers.lastLine);
     }
 
-    private Tuple!(SectionType, int, int, int, int, int, int)[] toTuples(DList!MergeResultSection sections)
+    private Tuple!(bool, int, int, int, int, int, int, int, int)[] toTuples(DList!MergeResultSection sections)
     {
-        Tuple!(SectionType, int, int, int, int, int, int)[] sectionTuples;
+        Tuple!(bool, int, int, int, int, int, int, int, int)[] sectionTuples;
         foreach(section; sections)
         {
             sectionTuples ~= toTuple(section);
@@ -208,6 +230,7 @@ public:
         int lastNonEmptyLineB;
         int lastNonEmptyLineC;
         MergeResultSection section;
+        int d3l_index = 0;
         foreach(d3l; d3la)
         {
             int equality = (d3l.bAEqB ? 1 : 0) | (d3l.bAEqC ? 2 : 0) | (d3l.bBEqC ? 4 : 0);
@@ -227,21 +250,25 @@ public:
                     mergeResultSections.insertBack(section);
                 }
                 section = new MergeResultSection();
-                section.m_sectionType = (equality == 7) ? SectionType.NO_CONFLICT : SectionType.UNRESOLVED_CONFLICT;
+                section.m_isConflict = (equality != 7);
                 section.m_inputLineNumbers[LineSource.A].firstLine = d3l.lineA;
                 section.m_inputLineNumbers[LineSource.B].firstLine = d3l.lineB;
                 section.m_inputLineNumbers[LineSource.C].firstLine = d3l.lineC;
                 section.m_inputLineNumbers[LineSource.A].lastLine = d3l.lineA;
                 section.m_inputLineNumbers[LineSource.B].lastLine = d3l.lineB;
                 section.m_inputLineNumbers[LineSource.C].lastLine = d3l.lineC;
+                section.m_diff3LineNumbers.firstLine = d3l_index;
+                section.m_diff3LineNumbers.lastLine = d3l_index;
             }
             else
             {
                 if(d3l.lineA != -1) section.m_inputLineNumbers[LineSource.A].lastLine = d3l.lineA;
                 if(d3l.lineB != -1) section.m_inputLineNumbers[LineSource.B].lastLine = d3l.lineB;
                 if(d3l.lineC != -1) section.m_inputLineNumbers[LineSource.C].lastLine = d3l.lineC;
+                section.m_diff3LineNumbers.lastLine = d3l_index;
             }
             prev_equality = equality;
+            d3l_index++;
         }
         if(prev_equality != -1)
         {
@@ -264,7 +291,7 @@ public:
         d3la.insertBack(Diff3Line( 1,  11,  21, true, true, true));
         auto sections = calculateMergeResultSections(d3la);
         auto sectionTuples = toTuples(sections);
-        assertEqual(sectionTuples[0], tuple(SectionType.NO_CONFLICT, 1, 1, 11, 11, 21, 21));
+        assertEqual(sectionTuples[0], tuple(false, 1, 1, 11, 11, 21, 21, 0, 0));
         assertEqual(sectionTuples.length, 1);
     }
 
@@ -276,7 +303,7 @@ public:
         d3la.insertBack(Diff3Line( 1,  11,  21, true, true, true));
         auto sections = calculateMergeResultSections(d3la);
         auto sectionTuples = toTuples(sections);
-        assertEqual(sectionTuples[0], tuple(SectionType.NO_CONFLICT, 0, 1, 10, 11, 20, 21));
+        assertEqual(sectionTuples[0], tuple(false, 0, 1, 10, 11, 20, 21, 0, 1));
         assertEqual(sectionTuples.length, 1);
     }
 
@@ -288,7 +315,7 @@ public:
         d3la.insertBack(Diff3Line( 1,  11,  21, false, true, true));
         auto sections = calculateMergeResultSections(d3la);
         auto sectionTuples = toTuples(sections);
-        assertEqual(sectionTuples[0], tuple(SectionType.UNRESOLVED_CONFLICT, 0, 1, 10, 11, 20, 21));
+        assertEqual(sectionTuples[0], tuple(true, 0, 1, 10, 11, 20, 21, 0, 1));
         assertEqual(sectionTuples.length, 1);
     }
 
@@ -301,8 +328,8 @@ public:
         d3la.insertBack(Diff3Line( 2,  12,  22, true, false, true));
         auto sections = calculateMergeResultSections(d3la);
         auto sectionTuples = toTuples(sections);
-        assertEqual(sectionTuples[0], tuple(SectionType.UNRESOLVED_CONFLICT, 0, 1, 10, 11, 20, 21));
-        assertEqual(sectionTuples[1], tuple(SectionType.UNRESOLVED_CONFLICT, 2, 2, 12, 12, 22, 22));
+        assertEqual(sectionTuples[0], tuple(true, 0, 1, 10, 11, 20, 21, 0, 1));
+        assertEqual(sectionTuples[1], tuple(true, 2, 2, 12, 12, 22, 22, 2, 2));
         assertEqual(sectionTuples.length, 2);
     }
 
@@ -315,8 +342,8 @@ public:
         d3la.insertBack(Diff3Line( 2,  12,  22, true, true, true));
         auto sections = calculateMergeResultSections(d3la);
         auto sectionTuples = toTuples(sections);
-        assertEqual(sectionTuples[0], tuple(SectionType.UNRESOLVED_CONFLICT, 0, 1, 10, 11, 20, 21));
-        assertEqual(sectionTuples[1], tuple(SectionType.NO_CONFLICT, 2, 2, 12, 12, 22, 22));
+        assertEqual(sectionTuples[0], tuple(true, 0, 1, 10, 11, 20, 21, 0, 1));
+        assertEqual(sectionTuples[1], tuple(false, 2, 2, 12, 12, 22, 22, 2, 2));
         assertEqual(sectionTuples.length, 2);
     }
 
@@ -329,8 +356,8 @@ public:
         d3la.insertBack(Diff3Line( 2,  12,  22, true, false, true));
         auto sections = calculateMergeResultSections(d3la);
         auto sectionTuples = toTuples(sections);
-        assertEqual(sectionTuples[0], tuple(SectionType.UNRESOLVED_CONFLICT, 0, 0, 10, 11, 20, 21));
-        assertEqual(sectionTuples[1], tuple(SectionType.UNRESOLVED_CONFLICT, 2, 2, 12, 12, 22, 22));
+        assertEqual(sectionTuples[0], tuple(true, 0, 0, 10, 11, 20, 21, 0, 1));
+        assertEqual(sectionTuples[1], tuple(true, 2, 2, 12, 12, 22, 22, 2, 2));
         assertEqual(sectionTuples.length, 2);
     }
 
@@ -343,8 +370,8 @@ public:
         d3la.insertBack(Diff3Line( 2,  12,  22, true, false, true));
         auto sections = calculateMergeResultSections(d3la);
         auto sectionTuples = toTuples(sections);
-        assertEqual(sectionTuples[0], tuple(SectionType.UNRESOLVED_CONFLICT, -1, -1, 10, 11, 20, 21));
-        assertEqual(sectionTuples[1], tuple(SectionType.UNRESOLVED_CONFLICT, 2, 2, 12, 12, 22, 22));
+        assertEqual(sectionTuples[0], tuple(true, -1, -1, 10, 11, 20, 21, 0, 1));
+        assertEqual(sectionTuples[1], tuple(true, 2, 2, 12, 12, 22, 22, 2, 2));
         assertEqual(sectionTuples.length, 2);
     }
 
@@ -353,6 +380,47 @@ public:
     {
         assert(m_mergeResultSections.empty);
         m_mergeResultSections = calculateMergeResultSections(d3la);
+    }
+
+    void automaticallyResolveConflicts(Diff3LineArray d3la)
+    {
+        assert(!m_mergeResultSections.empty);
+
+        foreach(section; m_mergeResultSections)
+        {
+            auto d3l = d3la[section.m_diff3LineNumbers.firstLine];
+            if(d3l.bAEqC)
+            {
+                if(d3l.bAEqB)
+                {
+                    /* Choose anything */
+                    section.toggle(LineSource.C);
+                }
+                else
+                {
+                    section.toggle(LineSource.B);
+                }
+            }
+            else
+            {
+                if(d3l.bAEqB)
+                {
+                    section.toggle(LineSource.C);
+                }
+                else
+                {
+                    if(d3l.bBEqC)
+                    {
+                        /* Choose either B or C */
+                        section.toggle(LineSource.C);
+                    }
+                    else
+                    {
+                        /* Unresolvable conflict, don't choose anything */
+                    }
+                }
+            }
+        }
     }
 
     /* IContentProvider methods */

@@ -28,6 +28,7 @@ module common;
 import std.c.locale;
 import std.c.stddef;
 import std.container;
+import std.stdio;
 import std.utf;
 
 import myassert;
@@ -287,4 +288,20 @@ struct Diff3Line
 
 alias Diff3LineList = DList!Diff3Line;
 alias Diff3LineArray = Array!Diff3Line;
+
+template where(T)
+{
+  T[]   where( T[] arr, bool delegate(T) dg )
+  {
+    T[] result ;
+    foreach( T val; arr ) if ( dg(val) ) result ~= val;
+    return result;
+  }
+}
+
+void log(string msg)
+{
+    auto f = File("logging.txt", "a"); // open for writing
+    f.write(msg);
+}
 

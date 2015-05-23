@@ -123,6 +123,7 @@ void main()
     auto modifiedContentProvider = new ModifiedContentProvider(lps[0]);
     auto mergeResultContentProvider = new MergeResultContentProvider(lps[0], lps[1], lps[2]);
     mergeResultContentProvider.determineMergeResultSections(d3la);
+    mergeResultContentProvider.automaticallyResolveConflicts(d3la);
 
     auto ui = new Ui(cps, lnps, mergeResultContentProvider);
     ui.handleResize();

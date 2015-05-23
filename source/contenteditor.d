@@ -257,6 +257,7 @@ public:
     }
 }
 
+/+
 unittest
 {
     /* Test if a character can be deleted */
@@ -461,4 +462,4 @@ unittest
     assertEqual(mcp.get(3), "line 5\n");
     assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 2);
 }
-
++/
