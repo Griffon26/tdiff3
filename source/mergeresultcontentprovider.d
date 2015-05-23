@@ -53,18 +53,6 @@ enum LineState
     NONE
 }
 
-struct MergeResultLine
-{
-    LineState lineState;
-    LineSource lineSource;
-
-    /* set when lineState is ORIGINAL */
-    int lineNumber;
-
-    /* set when lineState is EDITED */
-    string editedLine;
-}
-
 struct LineNumberRange
 {
     int firstLine;
@@ -80,7 +68,7 @@ private:
     LineNumberRange m_diff3LineNumbers;
 
     bool m_isConflict;
-    MergeResultLine[] m_mergeResultLines;
+    LineSource[] m_selectedSources;
 
 public:
     LineNumberRange getLineNumberRange(LineSource lineSource)
@@ -93,10 +81,27 @@ public:
     {
         if(m_isConflict)
         {
-            auto count = to!int(m_mergeResultLines.length);
-            if(count == 0)
+            // TODO: apply modifications
+            auto count = 0;
+
+            if(m_selectedSources.length == 0)
             {
+                /* <unresolved conflict> */
                 count = 1;
+            }
+            else
+            {
+                foreach(selectedSource; m_selectedSources)
+                {
+                    if(m_inputLineNumbers[selectedSource].firstLine == -1)
+                    {
+                        count += 1;
+                    }
+                    else
+                    {
+                        count += m_inputLineNumbers[selectedSource].lastLine - m_inputLineNumbers[selectedSource].firstLine + 1;
+                    }
+                }
             }
             return count;
         }
@@ -108,48 +113,52 @@ public:
 
     void toggle(LineSource lineSource)
     {
-        auto filtered_lines = m_mergeResultLines.where( (MergeResultLine mrl) { return mrl.lineSource != lineSource; } );
-        if(filtered_lines.length == m_mergeResultLines.length)
+        assert(m_isConflict);
+        if(m_selectedSources.canFind(lineSource))
         {
-            for(auto inputLineNumber = m_inputLineNumbers[lineSource].firstLine;
-                inputLineNumber <= m_inputLineNumbers[lineSource].lastLine;
-                inputLineNumber++)
-            {
-                MergeResultLine mergeResultLine;
-                mergeResultLine.lineState = LineState.ORIGINAL;
-                mergeResultLine.lineSource = lineSource;
-                mergeResultLine.lineNumber = inputLineNumber;
-
-                filtered_lines ~= mergeResultLine;
-            }
+            m_selectedSources = m_selectedSources.where( (LineSource ls) { return ls != lineSource; } );
         }
-
-        m_mergeResultLines = filtered_lines;
+        else
+        {
+            m_selectedSources ~= lineSource;
+        }
     }
 
     Tuple!(LineState, LineSource, int) getLineInfo(int relativeLineNumber)
     {
+        // TODO: apply modifications
         if(m_isConflict)
         {
-            if(m_mergeResultLines.length == 0)
+            log(format("getLineInfo for line %d", relativeLineNumber));
+            if(m_selectedSources.length == 0)
             {
                 return tuple(LineState.NONE, LineSource.UNDEFINED, -1);
             }
-            else
+            foreach(selectedSource; m_selectedSources)
             {
-                assert(relativeLineNumber < m_mergeResultLines.length);
-                auto mergeResultLine = m_mergeResultLines[relativeLineNumber];
-                switch(mergeResultLine.lineState)
+                int linesFromSelectedSource;
+                bool selectedSourceHasNoLines = (m_inputLineNumbers[selectedSource].firstLine == -1);
+                if(selectedSourceHasNoLines)
                 {
-                case LineState.EDITED:
-                    return tuple(LineState.EDITED, LineSource.UNDEFINED, relativeLineNumber);
-                case LineState.ORIGINAL:
-                    return tuple(LineState.ORIGINAL, mergeResultLine.lineSource, mergeResultLine.lineNumber);
-                case LineState.NONE:
-                default:
-                    assert(false);
+                    linesFromSelectedSource = 1;
+                }
+                else
+                {
+                    linesFromSelectedSource = m_inputLineNumbers[selectedSource].lastLine - m_inputLineNumbers[selectedSource].firstLine + 1;
+                }
+                if(relativeLineNumber < linesFromSelectedSource)
+                {
+                    if(selectedSourceHasNoLines)
+                    {
+                        return tuple(LineState.ORIGINAL, selectedSource, -1);
+                    }
+                    else
+                    {
+                        return tuple(LineState.ORIGINAL, selectedSource, m_inputLineNumbers[selectedSource].firstLine + relativeLineNumber);
+                    }
                 }
             }
+            assert(false);
         }
         else
         {
@@ -164,10 +173,10 @@ public:
     string getEditedLine(int relativeLineNumber)
     {
         assert(m_isConflict);
-        assert(relativeLineNumber < m_mergeResultLines.length);
-        assertEqual(m_mergeResultLines[relativeLineNumber].lineSource, LineState.EDITED);
 
-        return m_mergeResultLines[relativeLineNumber].editedLine;
+        /* TODO: implement */
+
+        return "";
     }
 }
 
@@ -389,12 +398,16 @@ public:
         foreach(section; m_mergeResultSections)
         {
             auto d3l = d3la[section.m_diff3LineNumbers.firstLine];
+
+            if(!section.m_isConflict)
+                continue;
+
             if(d3l.bAEqC)
             {
                 if(d3l.bAEqB)
                 {
-                    /* Choose anything */
-                    section.toggle(LineSource.C);
+                    /* Everything is the same, but we shouldn't have come here for non-conflict sections */
+                    assert(false);
                 }
                 else
                 {
@@ -445,7 +458,14 @@ public:
                     result = "<unresolved conflict>\n";
                     break;
                 case LineState.ORIGINAL:
-                    result = m_lps[info[1]].get(info[2]);
+                    if(info[2] == -1)
+                    {
+                        result = "<no source line>\n";
+                    }
+                    else
+                    {
+                        result = m_lps[info[1]].get(info[2]);
+                    }
                     break;
                 }
                 return result;
