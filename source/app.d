@@ -41,6 +41,7 @@ import icontentprovider;
 import iformattedcontentprovider;
 import ilineprovider;
 import linenumbercontentprovider;
+import mergeresultcontentprovider;
 import modifiedcontentprovider;
 import simplefilelineprovider;
 import ui;
@@ -120,8 +121,10 @@ void main()
     lnps[2] = new LineNumberContentProvider(lineNumberWidth, nrOfLines, d3la, 2);
 
     auto modifiedContentProvider = new ModifiedContentProvider(lps[0]);
+    auto mergeResultContentProvider = new MergeResultContentProvider(lps[0], lps[1], lps[2]);
+    mergeResultContentProvider.determineMergeResultSections(d3la);
 
-    auto ui = new Ui(cps, lnps, modifiedContentProvider);
+    auto ui = new Ui(cps, lnps, mergeResultContentProvider);
     ui.handleResize();
     ui.mainLoop();
 }

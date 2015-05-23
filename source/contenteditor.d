@@ -28,8 +28,19 @@ module contenteditor;
 import std.algorithm;
 
 import common;
-import modifiedcontentprovider;
+import mergeresultcontentprovider;
 import myassert;
+
+struct Position
+{
+    int line;
+    int character;
+
+    int opCmp(in Position rhs) const
+    {
+        return tuple(line, character).opCmp(tuple(rhs.line, rhs.character));
+    }
+}
 
 /**
  * The ContentEditor is responsible for translating editing commands received
@@ -45,7 +56,7 @@ private:
     Position m_currentPos; /* also the end of the selection */
 
     string m_copyPasteBuffer;
-    ModifiedContentProvider m_mcp;
+    MergeResultContentProvider m_mcp;
 
 public:
     enum Movement
@@ -62,7 +73,7 @@ public:
         FILEEND
     }
 
-    this(ModifiedContentProvider mcp)
+    this(MergeResultContentProvider mcp)
     {
         m_mcp = mcp;
     }
@@ -151,6 +162,7 @@ public:
 
     void delete_()
     {
+        /+
         if(m_selectionActive)
         {
             auto firstPos = min(m_selectionBegin, m_currentPos);
@@ -194,7 +206,7 @@ public:
                 mod.editedLineCount = 1;
             }
 
-            m_mcp.applyModification(mod);
+            //TODO: m_mcp.applyModification(mod);
         }
         else
         {
@@ -215,17 +227,20 @@ public:
             {
                 mod.lines = [ originalLine.substringColumns(0, m_currentPos.character, true) ~ originalLine.substringColumns(m_currentPos.character + 1, originalLineColumns, true) ];
             }
-            m_mcp.applyModification(mod);
+            // TODO: m_mcp.applyModification(mod);
         }
+        +/
     }
     void insertText(string fragment)
     {
+        /+
         auto mod = Modification();
         mod.firstLine = m_currentPos.line;
         mod.originalLineCount = 1;
         mod.editedLineCount = 1;
         mod.lines = [fragment];
-        m_mcp.applyModification(mod);
+        // TODO: m_mcp.applyModification(mod);
+        +/
     }
     void cut()
     {
@@ -245,7 +260,7 @@ public:
 unittest
 {
     /* Test if a character can be deleted */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 3), false);
@@ -260,7 +275,7 @@ unittest
 unittest
 {
     /* Test if a newline can be deleted */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 6), false);
@@ -274,7 +289,7 @@ unittest
 unittest
 {
     /* Test if a line can be inserted */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 3), false);
@@ -290,7 +305,7 @@ unittest
 unittest
 {
     /* Test deleting a selection at the start of the line */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 0), false);
@@ -306,7 +321,7 @@ unittest
 unittest
 {
     /* Test deleting a selection in the middle of a line */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 1), false);
@@ -322,7 +337,7 @@ unittest
 unittest
 {
     /* Test deleting a selection upto the end of a line */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 2), false);
@@ -338,7 +353,7 @@ unittest
 unittest
 {
     /* Test deleting a selection upto the end of another line */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 2), false);
@@ -354,7 +369,7 @@ unittest
 unittest
 {
     /* Test deleting a selection from the middle of one line to the middle of another, when lines are adjacent */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 3), false);
@@ -370,7 +385,7 @@ unittest
 unittest
 {
     /* Test deleting a selection from the middle of one line to the middle of another, with lines in between */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 3), false);
@@ -386,7 +401,7 @@ unittest
 unittest
 {
     /* Test deleting a selection from the start of one line to the middle of another, when lines are adjacent */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 0), false);
@@ -402,7 +417,7 @@ unittest
 unittest
 {
     /* Test deleting a selection from the start of one line to the middle of another, with lines in between */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 0), false);
@@ -418,7 +433,7 @@ unittest
 unittest
 {
     /* Test deleting a selection from the middle of one line to the start of another, when lines are adjacent */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 3), false);
@@ -434,7 +449,7 @@ unittest
 unittest
 {
     /* Test deleting a selection from the middle of one line to the start of another, with lines in between */
-    auto mcp = new ModifiedContentProvider(lp);
+    auto mcp = new MergeResultContentProvider(lp, lp, lp);
     auto editor = new ContentEditor(mcp);
 
     editor.moveTo(Position(2, 3), false);

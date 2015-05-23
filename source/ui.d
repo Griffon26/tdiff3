@@ -36,7 +36,7 @@ import editablecontentpane;
 import icontentprovider;
 import iformattedcontentprovider;
 import inputpanes;
-import modifiedcontentprovider;
+import mergeresultcontentprovider;
 import theme;
 
 class Ui
@@ -171,7 +171,7 @@ private:
     }
 
 public:
-    this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps, ModifiedContentProvider modifiedContentProvider)
+    this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps, MergeResultContentProvider mergeresultcontentprovider)
     {
         m_theme = new Theme();
 
@@ -213,8 +213,8 @@ public:
 
         m_inputPanes = new InputPanes(cps, lnps, m_theme);
 
-        auto contentEditor = new ContentEditor(modifiedContentProvider);
-        m_editableContentPane = new EditableContentPane(modifiedContentProvider, contentEditor);
+        auto contentEditor = new ContentEditor(mergeresultcontentprovider);
+        m_editableContentPane = new EditableContentPane(mergeresultcontentprovider, contentEditor);
     }
 
     void setPosition(int x, int y, int screenWidth, int screenHeight)

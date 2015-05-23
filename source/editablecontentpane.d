@@ -27,9 +27,9 @@ module editablecontentpane;
 
 import deimos.ncurses.curses;
 
-import modifiedcontentprovider;
 import contenteditor;
 import contentpane;
+import mergeresultcontentprovider;
 
 
 /**
@@ -42,8 +42,8 @@ import contentpane;
   *           [ContentPane]-gets content&gt;[IContentProvider],
   *           [app]-sends keystrokes&gt;[EditableContentPane {bg:limegreen}],
   *           [EditableContentPane {bg:limegreen}]-sends editing commands&gt;[ContentEditor],
-  *           [ContentEditor]-applies modifications&gt;[ModifiedContentProvider],
-  *           [IContentProvider]^-.-[ModifiedContentProvider]
+  *           [ContentEditor]-applies modifications&gt;[MergeResultContentProvider],
+  *           [IContentProvider]^-.-[MergeResultContentProvider]
   *          "/>
   */
 class EditableContentPane: ContentPane
@@ -52,10 +52,10 @@ private:
     ContentEditor m_editor;
 
 public:
-    this(ModifiedContentProvider mcp,
+    this(MergeResultContentProvider mrcp,
          ContentEditor editor)
     {
-        super(mcp);
+        super(mrcp);
         updateScrollLimits();
         m_editor = editor;
     }

@@ -42,24 +42,25 @@ enum LineSource
     A,
     B,
     C,
+    UNDEFINED
+}
+
+enum LineState
+{
+    ORIGINAL,
     EDITED,
     NONE
 }
 
-unittest
-{
-    /* LineSource.A through C are used to index into arrays, so make sure they have the right values */
-    assertEqual(LineSource.A, 0);
-}
-
 class MergeResultLine
 {
+    LineState lineState;
     LineSource lineSource;
 
-    /* set when lineSource is A/B/C */
+    /* set when lineState is ORIGINAL */
     int lineNumber;
 
-    /* set when lineSource is EDITED */
+    /* set when lineState is EDITED */
     string editedLine;
 }
 
@@ -89,7 +90,7 @@ private:
 public:
     LineNumberRange getLineNumberRange(LineSource lineSource)
     {
-        assert(lineSource <= LineSource.C);
+        assert(lineSource != LineSource.UNDEFINED);
         return m_inputLineNumbers[lineSource];
     }
 
@@ -109,7 +110,7 @@ public:
         }
     }
 
-    Tuple!(LineSource, int) getLineInfo(int relativeLineNumber)
+    Tuple!(LineState, LineSource, int) getLineInfo(int relativeLineNumber)
     {
         final switch(m_sectionType)
         {
@@ -117,14 +118,25 @@ public:
             auto inputLineNumber = m_inputLineNumbers[DEFAULT_LINE_SOURCE].firstLine + relativeLineNumber;
             assert(inputLineNumber <= m_inputLineNumbers[DEFAULT_LINE_SOURCE].lastLine);
 
-            return tuple(LineSource.C, inputLineNumber);
+            return tuple(LineState.ORIGINAL, LineSource.C, inputLineNumber);
 
         case SectionType.UNRESOLVED_CONFLICT:
-            return tuple(LineSource.NONE, -1);
+            return tuple(LineState.NONE, LineSource.init, -1);
 
         case SectionType.RESOLVED_CONFLICT:
             assert(relativeLineNumber < m_mergeResultLines.length);
-            return tuple(LineSource.EDITED, relativeLineNumber);
+            auto mergeResultLine = m_mergeResultLines[relativeLineNumber];
+            switch(mergeResultLine.lineState)
+            {
+            case LineState.EDITED:
+                return tuple(LineState.EDITED, LineSource.UNDEFINED, relativeLineNumber);
+            case LineState.NONE:
+                return tuple(LineState.NONE, LineSource.UNDEFINED, -1);
+            case LineState.ORIGINAL:
+                return tuple(LineState.ORIGINAL, mergeResultLine.lineSource, mergeResultLine.lineNumber);
+            default:
+                assert(false);
+            }
         }
     }
 
@@ -133,7 +145,7 @@ public:
     {
         assert(m_sectionType != SectionType.NO_CONFLICT);
         assert(relativeLineNumber < m_mergeResultLines.length);
-        assertEqual(m_mergeResultLines[relativeLineNumber].lineSource, LineSource.EDITED);
+        assertEqual(m_mergeResultLines[relativeLineNumber].lineSource, LineState.EDITED);
 
         return m_mergeResultLines[relativeLineNumber].editedLine;
     }
@@ -178,9 +190,13 @@ private:
     DList!MergeResultSection m_mergeResultSections;
 
 public:
-    this(shared ILineProvider lps[3])
+    this(shared ILineProvider lps0,
+         shared ILineProvider lps1,
+         shared ILineProvider lps2)
     {
-        m_lps = lps;
+        m_lps[0] = lps0;
+        m_lps[1] = lps1;
+        m_lps[2] = lps2;
     }
 
     private static DList!MergeResultSection calculateMergeResultSections(Diff3LineArray d3la)
@@ -352,16 +368,16 @@ public:
                 Nullable!string result;
                 auto info = section.getLineInfo(line);
 
-                switch(info[0])
+                final switch(info[0])
                 {
-                case LineSource.EDITED:
-                    result = section.getEditedLine(info[1]);
+                case LineState.EDITED:
+                    result = section.getEditedLine(info[2]);
                     break;
-                case LineSource.NONE:
-                    result = "<unresolved conflict>";
+                case LineState.NONE:
+                    result = "<unresolved conflict>\n";
                     break;
-                default:
-                    result = m_lps[info[0]].get(info[1]);
+                case LineState.ORIGINAL:
+                    result = m_lps[info[1]].get(info[2]);
                     break;
                 }
                 return result;
