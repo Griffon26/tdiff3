@@ -28,18 +28,14 @@ module contenteditor;
 import std.algorithm;
 
 import common;
-import mergeresultcontentprovider;
+import highlightaddingcontentprovider;
 import myassert;
 
-struct Position
-{
-    int line;
-    int character;
 
-    int opCmp(in Position rhs) const
-    {
-        return tuple(line, character).opCmp(tuple(rhs.line, rhs.character));
-    }
+struct FocusPositions
+{
+    Position input;
+    Position output;
 }
 
 /**
@@ -56,7 +52,8 @@ private:
     Position m_currentPos; /* also the end of the selection */
 
     string m_copyPasteBuffer;
-    MergeResultContentProvider m_mcp;
+    HighlightAddingContentProvider[3] m_d3cps;
+    HighlightAddingContentProvider m_mcp;
 
 public:
     enum Movement
@@ -73,9 +70,10 @@ public:
         FILEEND
     }
 
-    this(MergeResultContentProvider mcp)
+    this(HighlightAddingContentProvider[3] diff3ContentProviders, HighlightAddingContentProvider mergeResultContentProvider)
     {
-        m_mcp = mcp;
+        m_d3cps = diff3ContentProviders;
+        m_mcp = mergeResultContentProvider;
     }
 
     /* Editor operations */
@@ -158,6 +156,20 @@ public:
     Position getCursorPosition()
     {
         return m_currentPos;
+    }
+
+    /**
+     * getFocusPosition returns the positions in input and output content that
+     * should be moved into view. If the last operation was an edit, then this
+     * is the cursor position. If the last operation was a change in selected
+     * section, then it's the first character in the section.
+     */
+    FocusPositions getFocusPositions()
+    {
+        FocusPositions fp;
+        fp.input = Position(); // TODO: implement
+        fp.output = m_currentPos;
+        return fp;
     }
 
     void delete_()

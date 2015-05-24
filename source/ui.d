@@ -33,6 +33,7 @@ import colors;
 import common;
 import contenteditor;
 import editablecontentpane;
+import highlightaddingcontentprovider;
 import icontentprovider;
 import iformattedcontentprovider;
 import inputpanes;
@@ -44,6 +45,7 @@ class Ui
 private:
     InputPanes m_inputPanes;
     EditableContentPane m_editableContentPane;
+    ContentEditor m_editor;
     Theme m_theme;
 
     short colorcube(short colorcubesize, short r, short g, short b)
@@ -171,7 +173,7 @@ private:
     }
 
 public:
-    this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps, MergeResultContentProvider mergeresultcontentprovider)
+    this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps, MergeResultContentProvider mergeResultContentProvider)
     {
         m_theme = new Theme();
 
@@ -211,10 +213,21 @@ public:
 
         bkgd(COLOR_PAIR(ColorPair.NORMAL));
 
-        m_inputPanes = new InputPanes(cps, lnps, m_theme);
+        HighlightAddingContentProvider[3] hcps;
+        hcps[0] = new HighlightAddingContentProvider(cps[0]);
+        hcps[1] = new HighlightAddingContentProvider(cps[1]);
+        hcps[2] = new HighlightAddingContentProvider(cps[2]);
 
-        auto contentEditor = new ContentEditor(mergeresultcontentprovider);
-        m_editableContentPane = new EditableContentPane(mergeresultcontentprovider, contentEditor);
+        cps[0] = hcps[0];
+        cps[1] = hcps[1];
+        cps[2] = hcps[2];
+
+        auto highlightedMergeResultContentProvider = new HighlightAddingContentProvider(mergeResultContentProvider);
+
+        m_inputPanes = new InputPanes(cps, lnps, m_theme);
+        m_editableContentPane = new EditableContentPane(highlightedMergeResultContentProvider, m_theme);
+
+        m_editor = new ContentEditor(hcps, highlightedMergeResultContentProvider);
     }
 
     void setPosition(int x, int y, int screenWidth, int screenHeight)
@@ -256,34 +269,69 @@ public:
         m_inputPanes.redraw();
         m_editableContentPane.redraw();
 
+        bool updateFocus = true;
         int ch = 'x';
         while(ch != 'q')
         {
             ch = getch();
 
-            if(!m_editableContentPane.handleKeyboardInput(ch))
+            switch(ch)
             {
-                switch(ch)
-                {
-                case 'j':
-                    m_inputPanes.scrollY(1);
-                    break;
-                case 'i':
-                    m_inputPanes.scrollY(-1);
-                    break;
-                case 'k':
-                    m_inputPanes.scrollX(-1);
-                    break;
-                case 'l':
-                    m_inputPanes.scrollX(1);
-                    break;
-                case KEY_RESIZE:
-                    handleResize();
-                    break;
-                default:
-                    break;
-                }
+            case 'j':
+                m_inputPanes.scrollY(1);
+                updateFocus = false;
+                break;
+            case 'i':
+                m_inputPanes.scrollY(-1);
+                updateFocus = false;
+                break;
+            case 'k':
+                m_inputPanes.scrollX(-1);
+                updateFocus = false;
+                break;
+            case 'l':
+                m_inputPanes.scrollX(1);
+                updateFocus = false;
+                break;
+            case KEY_RESIZE:
+                handleResize();
+                break;
+            case KEY_LEFT:
+                m_editor.move(ContentEditor.Movement.LEFT, false);
+                break;
+            case KEY_RIGHT:
+                m_editor.move(ContentEditor.Movement.RIGHT, false);
+                break;
+            case KEY_UP:
+                m_editor.move(ContentEditor.Movement.UP, false);
+                break;
+            case KEY_DOWN:
+                m_editor.move(ContentEditor.Movement.DOWN, false);
+                break;
+            case KEY_HOME:
+                m_editor.move(ContentEditor.Movement.LINEHOME, false);
+                break;
+            case KEY_END:
+                m_editor.move(ContentEditor.Movement.LINEEND, false);
+                break;
+            case KEY_DC:
+                m_editor.delete_();
+                //updateScrollLimits();
+                //drawMissingLines(m_scrollPositionY, 0, m_height);
+                break;
+            default:
+                break;
             }
+
+            if(updateFocus)
+            {
+                auto focusPositions = m_editor.getFocusPositions();
+                m_inputPanes.moveFocus(focusPositions.input);
+                m_editableContentPane.moveFocus(focusPositions.output);
+            }
+
+            auto cursorPos = m_editor.getCursorPosition();
+            m_editableContentPane.setCursorPosition(cursorPos);
 
             m_inputPanes.redraw();
             m_editableContentPane.redraw();

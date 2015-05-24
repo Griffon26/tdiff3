@@ -25,6 +25,7 @@
  */
 module common;
 
+import std.algorithm;
 import std.c.locale;
 import std.c.stddef;
 import std.container;
@@ -303,5 +304,27 @@ void log(string msg)
 {
     auto f = File("logging.txt", "a"); // open for writing
     f.write(msg);
+}
+
+struct LineNumberRange
+{
+    int firstLine;
+    int lastLine;
+}
+
+bool contains(LineNumberRange range, int line)
+{
+    return line >= range.firstLine && line <= range.lastLine;
+}
+
+struct Position
+{
+    int line;
+    int character;
+
+    int opCmp(in Position rhs) const
+    {
+        return tuple(line, character).opCmp(tuple(rhs.line, rhs.character));
+    }
 }
 

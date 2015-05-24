@@ -1686,7 +1686,7 @@ DList!StyleFragment lineStyleFromFineDiffs(DiffListIterator it1,
 
     DiffStyle style = DiffStyle.ALL_SAME;
     int run = 0;
-    
+
     while(true)
     {
         int step;

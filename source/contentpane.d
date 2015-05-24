@@ -33,6 +33,7 @@ import std.string;
 import deimos.ncurses.curses;
 
 import colors;
+import common;
 import icontentprovider;
 
 /**
@@ -157,6 +158,32 @@ public:
 
         wresize(m_pad, m_height, m_cp.getContentWidth());
         drawMissingLines(m_scrollPositionY, 0, m_height);
+    }
+
+    /**
+     * moveFocus scrolls the pane to make sure that the specified position is in view
+     */
+    void moveFocus(Position pos)
+    {
+        int relativePositionX = pos.character - m_scrollPositionX;
+        if(relativePositionX < 0)
+        {
+            scrollX(relativePositionX);
+        }
+        else if(relativePositionX > (m_width - 1))
+        {
+            scrollX(relativePositionX - (m_width - 1));
+        }
+
+        int relativePositionY = pos.line - m_scrollPositionY;
+        if(relativePositionY < 0)
+        {
+            scrollY(relativePositionY);
+        }
+        else if(relativePositionY > (m_height - 1))
+        {
+            scrollY(relativePositionY - (m_height - 1));
+        }
     }
 
     /* Redraws content */

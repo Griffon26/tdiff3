@@ -27,9 +27,11 @@ module editablecontentpane;
 
 import deimos.ncurses.curses;
 
+import common;
 import contenteditor;
-import contentpane;
-import mergeresultcontentprovider;
+import formattedcontentpane;
+import highlightaddingcontentprovider;
+import theme;
 
 
 /**
@@ -46,85 +48,28 @@ import mergeresultcontentprovider;
   *           [IContentProvider]^-.-[MergeResultContentProvider]
   *          "/>
   */
-class EditableContentPane: ContentPane
+class EditableContentPane: FormattedContentPane
 {
 private:
-    ContentEditor m_editor;
+    Position m_cursorPos;
 
 public:
-    this(MergeResultContentProvider mrcp,
-         ContentEditor editor)
+    this(HighlightAddingContentProvider mergeResultContentProvider,
+         Theme theme)
     {
-        super(mrcp);
+        super(mergeResultContentProvider, theme);
         updateScrollLimits();
-        m_editor = editor;
     }
 
-    bool handleKeyboardInput(int ch)
+    void setCursorPosition(Position pos)
     {
-        bool handled = true;
-
-        switch(ch)
-        {
-        case KEY_LEFT:
-            m_editor.move(ContentEditor.Movement.LEFT, false);
-            break;
-        case KEY_RIGHT:
-            m_editor.move(ContentEditor.Movement.RIGHT, false);
-            break;
-        case KEY_UP:
-            m_editor.move(ContentEditor.Movement.UP, false);
-            break;
-        case KEY_DOWN:
-            m_editor.move(ContentEditor.Movement.DOWN, false);
-            break;
-        case KEY_HOME:
-            m_editor.move(ContentEditor.Movement.LINEHOME, false);
-            break;
-        case KEY_END:
-            m_editor.move(ContentEditor.Movement.LINEEND, false);
-            break;
-        case KEY_DC:
-            m_editor.delete_();
-            updateScrollLimits();
-            drawMissingLines(m_scrollPositionY, 0, m_height);
-            break;
-        default:
-            handled = false;
-            break;
-        }
-
-
-        int relativeCursorPositionX = m_editor.getCursorPosition().character - m_scrollPositionX;
-        if(relativeCursorPositionX < 0)
-        {
-            scrollX(relativeCursorPositionX);
-        }
-        else if(relativeCursorPositionX > (m_width - 1))
-        {
-            scrollX(relativeCursorPositionX - (m_width - 1));
-        }
-
-        int relativeCursorPositionY = m_editor.getCursorPosition().line - m_scrollPositionY;
-        if(relativeCursorPositionY < 0)
-        {
-            scrollY(relativeCursorPositionY);
-        }
-        else if(relativeCursorPositionY > (m_height - 1))
-        {
-            scrollY(relativeCursorPositionY - (m_height - 1));
-        }
-
-        return handled;
+        m_cursorPos = pos;
     }
-
-
 
     /* Redraws content */
     override void redraw()
     {
-        auto pos = m_editor.getCursorPosition();
-        wmove(m_pad, pos.line - m_scrollPositionY, pos.character);
+        wmove(m_pad, m_cursorPos.line - m_scrollPositionY, m_cursorPos.character);
         super.redraw();
     }
 }

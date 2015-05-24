@@ -30,6 +30,7 @@ import std.container;
 import std.string;
 import std.typecons;
 
+import contentmapper;
 import icontentprovider;
 import ilineprovider;
 import myassert;
@@ -92,6 +93,7 @@ struct Position
 class ModifiedContentProvider: IContentProvider
 {
 private:
+    ContentMapper m_contentMapper;
     shared ILineProvider m_lp;
     DList!Modification m_modifications;
 
@@ -103,8 +105,9 @@ private:
     }
 
 public:
-    this(shared ILineProvider lp)
+    this(ContentMapper contentMapper, shared ILineProvider lp)
     {
+        m_contentMapper = contentMapper;
         m_lp = lp;
     }
 

@@ -30,6 +30,7 @@ import std.math;
 
 import deimos.ncurses.curses;
 
+import common;
 import contentpane;
 import formattedcontentpane;
 import icontentprovider;
@@ -136,6 +137,18 @@ public:
         foreach(ip; m_inputPanes)
         {
             ip.scrollY(n);
+        }
+    }
+
+    void moveFocus(Position pos)
+    {
+        foreach(lnp; m_lineNumberPanes)
+        {
+            lnp.moveFocus(pos);
+        }
+        foreach(ip; m_inputPanes)
+        {
+            ip.moveFocus(pos);
         }
     }
 

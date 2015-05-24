@@ -22,6 +22,24 @@
 /**
  * Authors: Maurice van der Pot
  * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
+ * <img src="http://yuml.me/diagram/scruffy;dir:LR/class/
+ *           [ui]-sets focus position&gt;[InputContentPane],
+ *           [ui]-sets focus/cursor position&gt;[EditableContentPane],
+ *           [ui]-sends editing commands\ngets focus/cursor position&gt;[ContentEditor],
+ *           [ContentEditor]-applies modifications&gt;[ContentMapper],
+ *           [ContentEditor]-requests section location&gt;[ContentMapper],
+ *           [ContentEditor]-gets line source&gt;[ContentMapper],
+ *           [ContentEditor]-sets lines to be highlighted&gt;[Highlight Filter1],
+ *           [ContentEditor]-sets lines to be highlighted&gt;[Highlight Filter2],
+ *           [ContentEditor]-&gt;[FileLineProvider],
+ *           [MergeResultContentProvider]-&gt;[FileLineProvider],
+ *           [Diff3ContentProvider]-&gt;[FileLineProvider],
+ *           [InputContentPane]-gets content&gt;[Highlight Filter1],
+ *           [Highlight Filter1]-gets content&gt;[Diff3ContentProvider],
+ *           [EditableContentPane]-gets content&gt;[Highlight Filter2],
+ *           [Highlight Filter2]-gets content&gt;[MergeResultContentProvider],
+ *           [MergeResultContentProvider]-gets line source&gt;[ContentMapper]
+ *          "/>
  */
 module app;
 
@@ -34,15 +52,16 @@ import std.stdio;
 import std.string;
 
 import common;
+import contentmapper;
 import diff;
 import diff3contentprovider;
 import gnudiff;
+import highlightaddingcontentprovider;
 import icontentprovider;
 import iformattedcontentprovider;
 import ilineprovider;
 import linenumbercontentprovider;
 import mergeresultcontentprovider;
-import modifiedcontentprovider;
 import simplefilelineprovider;
 import ui;
 
@@ -120,10 +139,11 @@ void main()
     lnps[1] = new LineNumberContentProvider(lineNumberWidth, nrOfLines, d3la, 1);
     lnps[2] = new LineNumberContentProvider(lineNumberWidth, nrOfLines, d3la, 2);
 
-    auto modifiedContentProvider = new ModifiedContentProvider(lps[0]);
-    auto mergeResultContentProvider = new MergeResultContentProvider(lps[0], lps[1], lps[2]);
-    mergeResultContentProvider.determineMergeResultSections(d3la);
-    mergeResultContentProvider.automaticallyResolveConflicts(d3la);
+    auto contentMapper = new ContentMapper();
+    contentMapper.determineMergeResultSections(d3la);
+    contentMapper.automaticallyResolveConflicts(d3la);
+
+    auto mergeResultContentProvider = new MergeResultContentProvider(contentMapper, lps[0], lps[1], lps[2]);
 
     auto ui = new Ui(cps, lnps, mergeResultContentProvider);
     ui.handleResize();
