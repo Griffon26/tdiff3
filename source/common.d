@@ -192,7 +192,8 @@ enum DiffStyle
     A_B_SAME,
     A_C_SAME,
     B_C_SAME,
-    ALL_SAME
+    ALL_SAME,
+    ALL_SAME_HIGHLIGHTED
 }
 
 int left(DiffSelection ds)

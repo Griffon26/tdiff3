@@ -32,6 +32,7 @@ import colors;
 import common;
 import contentpane;
 import iformattedcontentprovider;
+import myassert;
 import theme;
 
 /**
@@ -68,6 +69,13 @@ class FormattedContentPane: ContentPane
         }
         else
         {
+            int styleLength = 0;
+            foreach(styleFragment; styleList)
+            {
+                styleLength += styleFragment.length;
+            }
+            assertEqual(styleLength, line.length, format("style length %d does not match line length %d [%s]", styleLength, line.length, line ));
+
             foreach(styleFragment; styleList)
             {
                 auto attributes = m_theme.getDiffStyleAttributes(styleFragment.style, false);

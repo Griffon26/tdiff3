@@ -43,6 +43,8 @@ public:
     this(IFormattedContentProvider originalContentProvider)
     {
         m_originalContentProvider = originalContentProvider;
+        m_linesToHighlight.firstLine = 3;
+        m_linesToHighlight.lastLine = 7;
     }
 
     void setHighlight(LineNumberRange linesToHighlight)
@@ -52,20 +54,50 @@ public:
 
     Nullable!string get(int line)
     {
-        return m_originalContentProvider.get(line);
+        auto originalLine = m_originalContentProvider.get(line);
+
+        if(m_linesToHighlight.contains(line))
+        {
+            string text;
+
+            if(originalLine.isNull())
+            {
+                text = "\n";
+            }
+            else
+            {
+                text = originalLine.get();
+            }
+
+            char[] restOfLine;
+            restOfLine.length = m_originalContentProvider.getContentWidth() - text.length;
+            restOfLine[] = ' ';
+
+            string result = (text[0..$-1] ~ restOfLine ~ text[$-1..$]).idup;
+            //string result = text;
+            originalLine = result;
+        }
+
+        return originalLine;
     }
 
     StyleList getFormat(int line)
     {
+        StyleList styleList = m_originalContentProvider.getFormat(line);
         if(m_linesToHighlight.contains(line))
         {
-            /* TODO: return different formatting for this line */
-            return m_originalContentProvider.getFormat(line);
+            int styleLength = 0;
+            foreach(ref styleFragment; styleList)
+            {
+                styleLength += styleFragment.length;
+                if(styleFragment.style == DiffStyle.ALL_SAME)
+                {
+                    styleFragment.style = DiffStyle.ALL_SAME_HIGHLIGHTED;
+                }
+            }
+            styleList.insertBack(StyleFragment(DiffStyle.ALL_SAME_HIGHLIGHTED, getContentWidth() - styleLength));
         }
-        else
-        {
-            return m_originalContentProvider.getFormat(line);
-        }
+        return styleList;
     }
 
     int getContentWidth()

@@ -109,12 +109,15 @@ private:
         init_pair(ColorPair.A_C_SAME,  green,  gray);
         init_pair(ColorPair.B_C_SAME,  blue,   gray);
         init_pair(ColorPair.NORMAL,    black,  white);
+        init_pair(ColorPair.NORMAL_HIGHLIGHTED,
+                                       black,  gray);
 
         theme.setDiffStyleAttributes(DiffStyle.DIFFERENT, false, COLOR_PAIR(ColorPair.DIFFERENT));
         theme.setDiffStyleAttributes(DiffStyle.A_B_SAME, false, COLOR_PAIR(ColorPair.A_B_SAME));
         theme.setDiffStyleAttributes(DiffStyle.A_C_SAME, false, COLOR_PAIR(ColorPair.A_C_SAME));
         theme.setDiffStyleAttributes(DiffStyle.B_C_SAME, false, COLOR_PAIR(ColorPair.B_C_SAME));
         theme.setDiffStyleAttributes(DiffStyle.ALL_SAME, false, COLOR_PAIR(ColorPair.NORMAL));
+        theme.setDiffStyleAttributes(DiffStyle.ALL_SAME_HIGHLIGHTED, false, COLOR_PAIR(ColorPair.NORMAL_HIGHLIGHTED));
     }
 
     void set_dark_theme(Theme theme)
@@ -164,12 +167,15 @@ private:
         init_pair(ColorPair.A_C_SAME,  green,  darkgray);
         init_pair(ColorPair.B_C_SAME,  blue,   darkgray);
         init_pair(ColorPair.NORMAL,    gray,   black);
+        init_pair(ColorPair.NORMAL_HIGHLIGHTED,
+                                       gray,   darkgray);
 
         theme.setDiffStyleAttributes(DiffStyle.DIFFERENT, false, COLOR_PAIR(ColorPair.DIFFERENT));
         theme.setDiffStyleAttributes(DiffStyle.A_B_SAME, false, COLOR_PAIR(ColorPair.A_B_SAME));
         theme.setDiffStyleAttributes(DiffStyle.A_C_SAME, false, COLOR_PAIR(ColorPair.A_C_SAME));
         theme.setDiffStyleAttributes(DiffStyle.B_C_SAME, false, COLOR_PAIR(ColorPair.B_C_SAME));
         theme.setDiffStyleAttributes(DiffStyle.ALL_SAME, false, COLOR_PAIR(ColorPair.NORMAL));
+        theme.setDiffStyleAttributes(DiffStyle.ALL_SAME_HIGHLIGHTED, false, COLOR_PAIR(ColorPair.NORMAL_HIGHLIGHTED));
     }
 
 public:
@@ -209,6 +215,7 @@ public:
             m_theme.setDiffStyleAttributes(DiffStyle.A_C_SAME, false, COLOR_PAIR(ColorPair.A_C_SAME) );
             m_theme.setDiffStyleAttributes(DiffStyle.B_C_SAME, false, COLOR_PAIR(ColorPair.B_C_SAME) | A_BOLD);
             m_theme.setDiffStyleAttributes(DiffStyle.ALL_SAME, false, COLOR_PAIR(ColorPair.NORMAL));
+            m_theme.setDiffStyleAttributes(DiffStyle.ALL_SAME_HIGHLIGHTED, false, COLOR_PAIR(ColorPair.NORMAL));
         }
 
         bkgd(COLOR_PAIR(ColorPair.NORMAL));
