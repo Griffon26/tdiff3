@@ -304,7 +304,7 @@ template where(T)
 void log(string msg)
 {
     auto f = File("logging.txt", "a"); // open for writing
-    f.write(msg);
+    f.write(msg ~ "\n");
 }
 
 struct LineNumberRange

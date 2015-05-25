@@ -138,7 +138,6 @@ public:
         // TODO: apply modifications
         if(m_isConflict)
         {
-            log(format("getLineInfo for line %d", relativeLineNumber));
             if(m_selectedSources.length == 0)
             {
                 assert(relativeLineNumber == 0);

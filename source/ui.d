@@ -28,6 +28,7 @@ module ui;
 import deimos.ncurses.curses;
 import std.algorithm;
 import std.conv;
+import std.string;
 
 import colors;
 import common;
@@ -276,10 +277,11 @@ public:
         m_inputPanes.redraw();
         m_editableContentPane.redraw();
 
-        bool updateFocus = true;
         int ch = 'x';
         while(ch != 'q')
         {
+            bool updateFocus = true;
+
             ch = getch();
 
             switch(ch)
