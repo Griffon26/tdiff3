@@ -25,10 +25,16 @@
  */
 module ui;
 
+import core.stdc.config;
+import core.stdc.errno;
+import core.sys.posix.sys.ioctl;
+import core.sys.posix.signal;
+import core.sys.posix.unistd;
 import deimos.ncurses.curses;
 import std.algorithm;
 import std.conv;
 import std.string;
+import termkey;
 
 import colors;
 import common;
@@ -40,6 +46,22 @@ import iformattedcontentprovider;
 import inputpanes;
 import mergeresultcontentprovider;
 import theme;
+
+enum SIGWINCH = 28;
+
+extern (C) void sigwinch_handler(int signum)
+{
+    winsize ws;
+    if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
+    {
+        log("sigwinch_handler: failed to retrieve new window size");
+    }
+    else
+    {
+        // TODO: check if calling resizeterm eventually blocks because it queues a KEY_RESIZE
+        resizeterm(ws.ws_row, ws.ws_col);
+    }
+}
 
 class Ui
 {
@@ -189,6 +211,12 @@ public:
         noecho();
         keypad(stdscr, true);
 
+        sigaction_t oldsa;
+        sigaction_t sa;
+        sa.sa_handler = &sigwinch_handler;
+
+        sigaction (SIGWINCH, &sa, null);
+
         if(!has_colors())
         {
             endwin();
@@ -269,6 +297,13 @@ public:
         refresh();
     }
 
+    bool isKey(TermKeyKey key, uint modifiers, c_long codepoit)
+    {
+        return (key.type == TermKeyType.UNICODE &&
+                key.modifiers == modifiers &&
+                key.code.codepoint == codepoit);
+    }
+
     void mainLoop()
     {
         /* Refresh stdscr to make sure the static items are drawn and stdscr won't
@@ -277,59 +312,121 @@ public:
         m_inputPanes.redraw();
         m_editableContentPane.redraw();
 
-        int ch = 'x';
-        while(ch != 'q')
+        TermKey *tk = termkey_new(0, TermKeyFlag.EINTR);
+        assert(tk, "Failed to create a new termkey instance");
+
+        TermKeyResult ret;
+        TermKeyKey key;
+
+        while( ((ret = termkey_waitkey(tk, &key)) != TermKeyResult.EOF) &&
+               !isKey(key, 0, 'q') )
         {
             bool updateFocus = true;
 
-            ch = getch();
-
-            switch(ch)
+            if(ret == TermKeyResult.ERROR)
             {
-            case 'j':
-                m_inputPanes.scrollY(1);
-                updateFocus = false;
-                break;
-            case 'i':
-                m_inputPanes.scrollY(-1);
-                updateFocus = false;
-                break;
-            case 'k':
-                m_inputPanes.scrollX(-1);
-                updateFocus = false;
-                break;
-            case 'l':
-                m_inputPanes.scrollX(1);
-                updateFocus = false;
-                break;
-            case KEY_RESIZE:
-                handleResize();
-                break;
-            case KEY_LEFT:
-                m_editor.move(ContentEditor.Movement.LEFT, false);
-                break;
-            case KEY_RIGHT:
-                m_editor.move(ContentEditor.Movement.RIGHT, false);
-                break;
-            case KEY_UP:
-                m_editor.move(ContentEditor.Movement.UP, false);
-                break;
-            case KEY_DOWN:
-                m_editor.move(ContentEditor.Movement.DOWN, false);
-                break;
-            case KEY_HOME:
-                m_editor.move(ContentEditor.Movement.LINEHOME, false);
-                break;
-            case KEY_END:
-                m_editor.move(ContentEditor.Movement.LINEEND, false);
-                break;
-            case KEY_DC:
-                m_editor.delete_();
-                //updateScrollLimits();
-                //drawMissingLines(m_scrollPositionY, 0, m_height);
-                break;
-            default:
-                break;
+                int err = errno();
+                log(format("waitkey failed with an error %d", err));
+                if(err == EINTR)
+                {
+                    handleResize();
+                }
+                else
+                {
+                    log("it wasn't EINTR, quitting...");
+                    break;
+                }
+            }
+            else
+            {
+                char[50] buffer;
+                termkey_strfkey(tk, buffer.ptr, buffer.sizeof, &key, TermKeyFormat.VIM);
+                log(buffer.idup);
+
+                if(key.type == TermKeyType.UNICODE &&
+                   key.modifiers == 0)
+                {
+                    switch(key.code.codepoint)
+                    {
+                    case 'j':
+                        m_inputPanes.scrollY(1);
+                        updateFocus = false;
+                        break;
+                    case 'i':
+                        m_inputPanes.scrollY(-1);
+                        updateFocus = false;
+                        break;
+                    case 'k':
+                        m_inputPanes.scrollX(-1);
+                        updateFocus = false;
+                        break;
+                    case 'l':
+                        m_inputPanes.scrollX(1);
+                        updateFocus = false;
+                        break;
+                    case KEY_RESIZE:
+                        handleResize();
+                        break;
+                    case KEY_LEFT:
+                        m_editor.move(ContentEditor.Movement.LEFT, false);
+                        break;
+                    case KEY_RIGHT:
+                        m_editor.move(ContentEditor.Movement.RIGHT, false);
+                        break;
+                    case KEY_UP:
+                        m_editor.move(ContentEditor.Movement.UP, false);
+                        break;
+                    case KEY_DOWN:
+                        m_editor.move(ContentEditor.Movement.DOWN, false);
+                        break;
+                    case KEY_HOME:
+                        m_editor.move(ContentEditor.Movement.LINEHOME, false);
+                        break;
+                    case KEY_END:
+                        m_editor.move(ContentEditor.Movement.LINEEND, false);
+                        break;
+                    case KEY_DC:
+                        m_editor.delete_();
+                        //updateScrollLimits();
+                        //drawMissingLines(m_scrollPositionY, 0, m_height);
+                        break;
+                    default:
+                        break;
+                    }
+                }
+                else if(key.type == TermKeyType.KEYSYM)
+                {
+                    if(key.modifiers == 0)
+                    {
+                        switch(key.code.sym)
+                        {
+                        case TermKeySym.UP:
+                            m_editor.move(ContentEditor.Movement.UP, false);
+                            break;
+                        case TermKeySym.DOWN:
+                            m_editor.move(ContentEditor.Movement.DOWN, false);
+                            break;
+                        default:
+                            continue;
+                        }
+                    }
+                    else if(key.modifiers == TermKeyKeyMod.CTRL)
+                    {
+                        switch(key.code.sym)
+                        {
+                        case TermKeySym.UP:
+                            m_inputPanes.scrollY(-1);
+                            updateFocus = false;
+                            break;
+                        case TermKeySym.DOWN:
+                            m_inputPanes.scrollY(1);
+                            updateFocus = false;
+                            break;
+                        default:
+                            continue;
+                        }
+                    }
+                }
             }
 
             if(updateFocus)
@@ -346,6 +443,7 @@ public:
             m_editableContentPane.redraw();
         }
 
+        termkey_destroy(tk);
         endwin();
     }
 }

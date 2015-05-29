@@ -1,13 +1,18 @@
 {
 	"name": "tdiff3",
 	"description": "A text-mode 3-way diff/merge tool.",
-	"copyright": "Copyright © 2014, Maurice van der Pot <griffon26@kfk4ever.com>",
+	"copyright": "Copyright © 2014-2015, Maurice van der Pot <griffon26@kfk4ever.com>",
 	"authors": ["Maurice van der Pot <griffon26@kfk4ever.com>"],
         "license": "GPL-2.0 or later",
 	"dependencies": {
-        "d-unit": ">=0.7.1",
-        "ncurses": "~master"
+		"d-unit": ">=0.7.1",
+		"ncurses": "~master"
 	},
 	"configurations": [
+		{ 
+			"name": "application",
+			"targetType": "executable",
+			"libs": ["termkey"]
+		}
 	]
 }
