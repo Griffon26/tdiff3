@@ -8,11 +8,5 @@
 		"d-unit": ">=0.7.1",
 		"ncurses": "~master"
 	},
-	"configurations": [
-		{ 
-			"name": "application",
-			"targetType": "executable",
-			"libs": ["termkey"]
-		}
-	]
+	"libs": ["termkey"]
 }

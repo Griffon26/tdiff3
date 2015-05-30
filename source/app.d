@@ -44,22 +44,18 @@
 module app;
 
 import std.algorithm;
-import std.array;
 import std.c.locale;
 import std.conv;
 import std.math;
 import std.stdio;
-import std.string;
 
 import common;
 import contentmapper;
 import diff;
 import diff3contentprovider;
 import gnudiff;
-import highlightaddingcontentprovider;
 import icontentprovider;
 import iformattedcontentprovider;
-import ilineprovider;
 import linenumbercontentprovider;
 import mergeresultcontentprovider;
 import simplefilelineprovider;

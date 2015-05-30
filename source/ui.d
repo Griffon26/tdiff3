@@ -34,6 +34,7 @@ import deimos.ncurses.curses;
 import std.algorithm;
 import std.conv;
 import std.string;
+
 import termkey;
 
 import colors;
@@ -297,11 +298,11 @@ public:
         refresh();
     }
 
-    bool isKey(TermKeyKey key, uint modifiers, c_long codepoit)
+    bool isKey(TermKeyKey key, uint modifiers, c_long codepoint)
     {
         return (key.type == TermKeyType.UNICODE &&
                 key.modifiers == modifiers &&
-                key.code.codepoint == codepoit);
+                key.code.codepoint == codepoint);
     }
 
     void mainLoop()
