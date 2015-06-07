@@ -75,7 +75,8 @@ class Diff3ContentProvider: IFormattedContentProvider
     StyleList getFormat(int contentLine)
     {
         assert(contentLine < m_contentHeight);
-        return m_d3la[contentLine].style(m_fileIndex);
+
+        return m_d3la[contentLine].style(m_fileIndex).dup;
     }
 
     int getContentWidth()
@@ -86,6 +87,11 @@ class Diff3ContentProvider: IFormattedContentProvider
     int getContentHeight()
     {
         return m_contentHeight;
+    }
+
+    void connectLineChangeObserver(void delegate(LineNumberRange) d)
+    {
+        /* no need to do anything for content that doesn't change */
     }
 }
 

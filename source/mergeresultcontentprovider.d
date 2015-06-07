@@ -29,7 +29,7 @@ import std.algorithm;
 import std.container;
 import std.container.util;
 import std.conv;
-import std.stdio;
+import std.signals;
 import std.string;
 import std.typecons;
 
@@ -51,6 +51,8 @@ private:
     ContentMapper m_contentMapper;
     shared ILineProvider[3] m_lps;
     DList!MergeResultSection m_mergeResultSections;
+
+    mixin Signal!(LineNumberRange) m_lineChanged;
 
 public:
     this(ContentMapper contentMapper,
@@ -107,6 +109,12 @@ public:
     int getContentHeight()
     {
         return m_contentMapper.getContentHeight();
+    }
+
+    void connectLineChangeObserver(void delegate(LineNumberRange lines) d)
+    {
+        /* TODO: make sure to register for line changes at the content mapper */
+        m_lineChanged.connect(d);
     }
 }
 

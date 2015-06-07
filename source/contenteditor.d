@@ -103,28 +103,34 @@ public:
     /* Editor operations */
     void selectNextConflict()
     {
-        m_selectedSection++;
-        auto sectionInfo = m_contentMapper.getSectionInfo(m_selectedSection);
-        foreach(cp; m_d3cps)
+        if(m_selectedSection < m_contentMapper.getNumberOfSections() - 1)
         {
-            cp.setHighlight(sectionInfo.inputPaneLineNumbers);
+            m_selectedSection++;
+            auto sectionInfo = m_contentMapper.getSectionInfo(m_selectedSection);
+            foreach(cp; m_d3cps)
+            {
+                cp.setHighlight(sectionInfo.inputPaneLineNumbers);
+            }
+            m_mcp.setHighlight(sectionInfo.mergeResultPaneLineNumbers);
+            updateInputFocusPosition(Position(sectionInfo.inputPaneLineNumbers.firstLine, 0));
+            updateOutputFocusPosition(Position(sectionInfo.mergeResultPaneLineNumbers.firstLine, 0));
         }
-        m_mcp.setHighlight(sectionInfo.mergeResultPaneLineNumbers);
-        updateInputFocusPosition(Position(0, sectionInfo.inputPaneLineNumbers.firstLine));
-        updateOutputFocusPosition(Position(0, sectionInfo.mergeResultPaneLineNumbers.firstLine));
     }
 
     void selectPreviousConflict()
     {
-        m_selectedSection--;
-        auto sectionInfo = m_contentMapper.getSectionInfo(m_selectedSection);
-        foreach(cp; m_d3cps)
+        if(m_selectedSection > 0)
         {
-            cp.setHighlight(sectionInfo.inputPaneLineNumbers);
+            m_selectedSection--;
+            auto sectionInfo = m_contentMapper.getSectionInfo(m_selectedSection);
+            foreach(cp; m_d3cps)
+            {
+                cp.setHighlight(sectionInfo.inputPaneLineNumbers);
+            }
+            m_mcp.setHighlight(sectionInfo.mergeResultPaneLineNumbers);
+            updateInputFocusPosition(Position(sectionInfo.inputPaneLineNumbers.firstLine, 0));
+            updateOutputFocusPosition(Position(sectionInfo.mergeResultPaneLineNumbers.firstLine, 0));
         }
-        m_mcp.setHighlight(sectionInfo.mergeResultPaneLineNumbers);
-        updateInputFocusPosition(Position(0, sectionInfo.inputPaneLineNumbers.firstLine));
-        updateOutputFocusPosition(Position(0, sectionInfo.mergeResultPaneLineNumbers.firstLine));
     }
 
     void moveTo(Position newPos, bool withSelection)

@@ -28,11 +28,9 @@ module editablecontentpane;
 import deimos.ncurses.curses;
 
 import common;
-import contenteditor;
 import formattedcontentpane;
-import highlightaddingcontentprovider;
+import iformattedcontentprovider;;
 import theme;
-
 
 /**
  * EditableContentPane is a FormattedContentPane that in addition to its
@@ -61,11 +59,11 @@ private:
     Position m_cursorPos;
 
 public:
-    this(HighlightAddingContentProvider mergeResultContentProvider,
+    this(IFormattedContentProvider fcp,
          Theme theme)
     {
-        super(mergeResultContentProvider, theme);
-        updateScrollLimits();
+        super(fcp, theme);
+        //updateScrollLimits();
     }
 
     void setCursorPosition(Position pos)

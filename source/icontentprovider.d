@@ -25,7 +25,10 @@
  */
 module icontentprovider;
 
+import std.signals;
 import std.typecons;
+
+import common;
 
 /**
  * IContentProvider is a line-based interface to content.
@@ -35,5 +38,7 @@ interface IContentProvider
     Nullable!string get(int line);
     int getContentWidth();
     int getContentHeight();
+
+    void connectLineChangeObserver(void delegate(LineNumberRange lines) d);
 }
 

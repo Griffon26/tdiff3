@@ -474,6 +474,11 @@ public:
         assert(false);
     }
 
+    ulong getNumberOfSections()
+    {
+        return m_mergeResultSections.length;
+    }
+
     SectionInfo getSectionInfo(int sectionIndex)
     {
         MergeResultSection section = m_mergeResultSections[sectionIndex];

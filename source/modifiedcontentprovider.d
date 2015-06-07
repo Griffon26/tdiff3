@@ -23,6 +23,7 @@
  * Authors: Maurice van der Pot
  * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
  */
+/+
 module modifiedcontentprovider;
 
 import std.algorithm;
@@ -344,8 +345,6 @@ version(unittest)
 
     auto lp = new shared FakeLineProvider();
 }
-
-/+
 
 unittest
 {

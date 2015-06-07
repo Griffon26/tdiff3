@@ -63,6 +63,8 @@ public:
         m_pad = newpad(10, 10);
         //wattron(m_pad, COLOR_PAIR(1));
         //wbkgd(m_pad, COLOR_PAIR(ColorPair.NORMAL));
+
+        cp.connectLineChangeObserver(&linesChanged);
     }
 
     protected void updateScrollLimits()
@@ -81,11 +83,13 @@ public:
         {
             line = "\n";
         }
-        wprintw(m_pad, toStringz(line));
+        wprintw(m_pad, "%s", toStringz(line));
     }
 
     void drawMissingLines(int contentLineOffset, int displayLineOffset, int count)
     {
+        mixin(common.trace);
+
         int firstLine = contentLineOffset;
         int lastLine = contentLineOffset + count - 1;
 
@@ -196,6 +200,18 @@ public:
         //writefln("Redrawing window from (%d,%d) to (%d,%d)", m_x, m_y, m_x + m_width - 1, m_y + m_height - 1);
 
         prefresh(m_pad, 0, m_scrollPositionX, m_y, m_x, m_y + m_height - 1, m_x + m_width - 1);
+    }
+
+    void linesChanged(LineNumberRange lines)
+    {
+        log(format("lines from %d to %d changed", lines.firstLine, lines.lastLine));
+        LineNumberRange linesToBeUpdated = overlap(lines, LineNumberRange(m_scrollPositionY, m_scrollPositionY + m_height - 1));
+        if(linesToBeUpdated.isValid)
+        {
+            drawMissingLines(linesToBeUpdated.firstLine,
+                             linesToBeUpdated.firstLine - m_scrollPositionY,
+                             linesToBeUpdated.lastLine - linesToBeUpdated.firstLine + 1);
+        }
     }
 }
 

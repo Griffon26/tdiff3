@@ -25,6 +25,8 @@
  */
 module highlightaddingcontentprovider;
 
+import std.algorithm;
+import std.signals;
 import std.typecons;
 
 import common;
@@ -43,17 +45,23 @@ private:
     IFormattedContentProvider m_originalContentProvider;
     LineNumberRange m_linesToHighlight;
 
+    mixin Signal!(LineNumberRange) m_linesChanged;
+
 public:
     this(IFormattedContentProvider originalContentProvider)
     {
         m_originalContentProvider = originalContentProvider;
-        m_linesToHighlight.firstLine = 3;
-        m_linesToHighlight.lastLine = 7;
+        m_linesToHighlight.firstLine = 0;
+        m_linesToHighlight.lastLine = 0;
+
+        m_originalContentProvider.connectLineChangeObserver(&linesChanged);
     }
 
     void setHighlight(LineNumberRange linesToHighlight)
     {
+        auto rangeToRedraw = merge(linesToHighlight, m_linesToHighlight);
         m_linesToHighlight = linesToHighlight;
+        m_linesChanged.emit(rangeToRedraw);
     }
 
     Nullable!string get(int line)
@@ -63,6 +71,8 @@ public:
         if(m_linesToHighlight.contains(line))
         {
             string text;
+
+            log("with highlight\n");
 
             if(originalLine.isNull())
             {
@@ -74,13 +84,18 @@ public:
             }
 
             char[] restOfLine;
-            restOfLine.length = m_originalContentProvider.getContentWidth() - text.length;
+            restOfLine.length = m_originalContentProvider.getContentWidth() - text.lengthInColumns(true);
             restOfLine[] = ' ';
 
             string result = (text[0..$-1] ~ restOfLine ~ text[$-1..$]).idup;
             //string result = text;
             originalLine = result;
         }
+        else
+        {
+            log("without highlight\n");
+        }
+
 
         return originalLine;
     }
@@ -90,6 +105,8 @@ public:
         StyleList styleList = m_originalContentProvider.getFormat(line);
         if(m_linesToHighlight.contains(line))
         {
+            log("with highlight\n");
+
             int styleLength = 0;
             foreach(ref styleFragment; styleList)
             {
@@ -100,6 +117,10 @@ public:
                 }
             }
             styleList.insertBack(StyleFragment(DiffStyle.ALL_SAME_HIGHLIGHTED, getContentWidth() - styleLength));
+        }
+        else
+        {
+            log("without highlight\n");
         }
         return styleList;
     }
@@ -112,6 +133,17 @@ public:
     int getContentHeight()
     {
         return m_originalContentProvider.getContentHeight();
+    }
+
+    void connectLineChangeObserver(void delegate(LineNumberRange lines) d)
+    {
+        /* TODO: make sure to register for line changes at the content mapper */
+        m_linesChanged.connect(d);
+    }
+
+    void linesChanged(LineNumberRange lines)
+    {
+        /* TODO: implement */
     }
 }
 

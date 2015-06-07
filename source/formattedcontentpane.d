@@ -65,7 +65,7 @@ class FormattedContentPane: ContentPane
         if(styleList.empty)
         {
             wattrset(m_pad, defaultAttributes);
-            wprintw(m_pad, toStringz(line));
+            wprintw(m_pad, "%s", toStringz(line));
         }
         else
         {
@@ -80,7 +80,7 @@ class FormattedContentPane: ContentPane
             {
                 auto attributes = m_theme.getDiffStyleAttributes(styleFragment.style, false);
                 wattrset(m_pad, attributes);
-                wprintw(m_pad, toStringz(line[offset..offset + styleFragment.length]));
+                wprintw(m_pad, "%s", toStringz(line[offset..offset + styleFragment.length]));
                 offset += styleFragment.length;
             }
         }

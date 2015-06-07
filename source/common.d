@@ -307,15 +307,78 @@ void log(string msg)
     f.write(msg ~ "\n");
 }
 
+immutable trace =`
+    import std.string : format;
+
+    import std.traits : ParameterIdentifierTuple;
+    mixin(format(
+        q{enum args = ParameterIdentifierTuple!(%s);},
+        __FUNCTION__
+    ));
+
+    import std.algorithm : map, joiner;
+    enum args_fmt = [args].map!(a => "%s").joiner(", ");
+
+    mixin(format(
+        q{log(format("> %s(%s)", %s));},
+        __FUNCTION__,
+        args_fmt,
+        [args].joiner(", ")
+    ));
+
+    scope(exit)
+    {
+        mixin(format(
+           q{log(format("< %s(%s)", %s));},
+           __FUNCTION__,
+           args_fmt,
+           [args].joiner(", ")
+        ));
+    }
+`;
+
 struct LineNumberRange
 {
     int firstLine;
     int lastLine;
+
+    bool isValid()
+    {
+        return firstLine != -1;
+    }
 }
 
 bool contains(LineNumberRange range, int line)
 {
+    assert(range.isValid);
+
     return line >= range.firstLine && line <= range.lastLine;
+}
+
+/**
+ * overlap will return the range of lines that is present in both input ranges.
+ * The returned range must be checked for validity, because if there is no
+ * overlap it will be invalid.
+ */
+LineNumberRange overlap(LineNumberRange thisRange, LineNumberRange otherRange)
+{
+    assert(thisRange.isValid);
+    assert(otherRange.isValid);
+
+    return LineNumberRange(max(thisRange.firstLine, otherRange.firstLine),
+                           min(thisRange.lastLine, otherRange.lastLine));
+}
+
+/**
+ * merge will return the smallest range that contains both input ranges
+ */
+LineNumberRange merge(LineNumberRange thisRange, LineNumberRange otherRange)
+{
+    assert(thisRange.isValid);
+    assert(otherRange.isValid);
+
+    return LineNumberRange(min(thisRange.firstLine, otherRange.firstLine),
+                           max(thisRange.lastLine, otherRange.lastLine));
 }
 
 struct Position

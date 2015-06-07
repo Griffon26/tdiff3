@@ -81,5 +81,9 @@ class LineNumberContentProvider: IContentProvider
         return m_contentHeight;
     }
 
+    void connectLineChangeObserver(void delegate(LineNumberRange lines) d)
+    {
+        /* no need to do anything for content that doesn't change */
+    }
 }
 
