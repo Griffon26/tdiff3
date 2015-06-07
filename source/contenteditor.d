@@ -28,21 +28,37 @@ module contenteditor;
 import std.algorithm;
 
 import common;
+import contentmapper;
 import highlightaddingcontentprovider;
 import myassert;
 
 
-struct FocusPositions
-{
-    Position input;
-    Position output;
-}
-
 /**
  * The ContentEditor is responsible for translating editing commands received
- * from the EditableContentPane into modifications and send them to the
- * ModifiedContentProvider. It is also responsible for maintaining the cursor
- * position and selection state.
+ * from the Ui into modifications and send them to the ContentMapper.  It is
+ * also responsible for maintaining the cursor position and selection state,
+ * including the currently selected merge result section. It tells the
+ * HighlightAddingContentProviders which lines to highlight based on the
+ * selection.
+ *
+ * <object data="../uml/contenteditor.svg" type="image/svg+xml"></object>
+ */
+/*
+ * @startuml
+ * hide circle
+ * skinparam minClassWidth 70
+ * skinparam classArrowFontSize 8
+ * class Ui --> ContentEditor: sends editing commands\ngets focus/cursor position
+ * ContentEditor --> ContentMapper: applies modifications\nrequests section location\ngets line source
+ * ContentEditor --> "1" HighlightAddingContentProvider: sets output lines to be highlighted
+ * ContentEditor --> "3" HighlightAddingContentProvider: sets input lines to be highlighted
+ * ContentEditor --> ILineProvider: gets line
+ *
+ * url of Ui is [[../ui/Ui.html]]
+ * url of HighlightAddingContentProvider is [[../highlightaddingcontentprovider/HighlightAddingContentProvider.html]]
+ * url of ILineProvider is [[../ilineprovider/ILineProvider.html]]
+ * url of ContentMapper is [[../contentmapper/ContentMapper.html]]
+ * @enduml
  */
 class ContentEditor
 {
@@ -50,10 +66,17 @@ private:
     bool m_selectionActive;
     Position m_selectionBegin;
     Position m_currentPos; /* also the end of the selection */
+    int m_selectedSection;
 
     string m_copyPasteBuffer;
     HighlightAddingContentProvider[3] m_d3cps;
     HighlightAddingContentProvider m_mcp;
+    ContentMapper m_contentMapper;
+
+    bool m_inputFocusChanged;
+    bool m_outputFocusChanged;
+    Position m_inputFocusPosition;
+    Position m_outputFocusPosition;
 
 public:
     enum Movement
@@ -70,13 +93,39 @@ public:
         FILEEND
     }
 
-    this(HighlightAddingContentProvider[3] diff3ContentProviders, HighlightAddingContentProvider mergeResultContentProvider)
+    this(HighlightAddingContentProvider[3] diff3ContentProviders, HighlightAddingContentProvider mergeResultContentProvider, ContentMapper contentMapper)
     {
         m_d3cps = diff3ContentProviders;
         m_mcp = mergeResultContentProvider;
+        m_contentMapper = contentMapper;
     }
 
     /* Editor operations */
+    void selectNextConflict()
+    {
+        m_selectedSection++;
+        auto sectionInfo = m_contentMapper.getSectionInfo(m_selectedSection);
+        foreach(cp; m_d3cps)
+        {
+            cp.setHighlight(sectionInfo.inputPaneLineNumbers);
+        }
+        m_mcp.setHighlight(sectionInfo.mergeResultPaneLineNumbers);
+        updateInputFocusPosition(Position(0, sectionInfo.inputPaneLineNumbers.firstLine));
+        updateOutputFocusPosition(Position(0, sectionInfo.mergeResultPaneLineNumbers.firstLine));
+    }
+
+    void selectPreviousConflict()
+    {
+        m_selectedSection--;
+        auto sectionInfo = m_contentMapper.getSectionInfo(m_selectedSection);
+        foreach(cp; m_d3cps)
+        {
+            cp.setHighlight(sectionInfo.inputPaneLineNumbers);
+        }
+        m_mcp.setHighlight(sectionInfo.mergeResultPaneLineNumbers);
+        updateInputFocusPosition(Position(0, sectionInfo.inputPaneLineNumbers.firstLine));
+        updateOutputFocusPosition(Position(0, sectionInfo.mergeResultPaneLineNumbers.firstLine));
+    }
 
     void moveTo(Position newPos, bool withSelection)
     {
@@ -150,6 +199,8 @@ public:
 
         moveTo(newPos, withSelection);
 
+        updateOutputFocusPosition(newPos);
+
         return newPos != oldPos;
     }
 
@@ -159,17 +210,43 @@ public:
     }
 
     /**
-     * getFocusPosition returns the positions in input and output content that
-     * should be moved into view. If the last operation was an edit, then this
-     * is the cursor position. If the last operation was a change in selected
-     * section, then it's the first character in the section.
+     * the focus position represents the position in input and output content
+     * that should be moved into view. If the last operation was an edit, then
+     * this is the cursor position. If the last operation was a change in
+     * selected section, then it's the first character in the section.
+     * Only when the focus position changes should the scroll position be
+     * updated.
      */
-    FocusPositions getFocusPositions()
+    private void updateInputFocusPosition(Position pos)
     {
-        FocusPositions fp;
-        fp.input = Position(); // TODO: implement
-        fp.output = m_currentPos;
-        return fp;
+        m_inputFocusChanged = true;
+        m_inputFocusPosition = pos;
+    }
+
+    private void updateOutputFocusPosition(Position pos)
+    {
+        m_outputFocusChanged = true;
+        m_outputFocusPosition = pos;
+    }
+
+    bool inputFocusNeedsUpdate()
+    {
+        return m_inputFocusChanged;
+    }
+
+    bool outputFocusNeedsUpdate()
+    {
+        return m_outputFocusChanged;
+    }
+
+    Position getInputFocusPosition()
+    {
+        return m_inputFocusPosition;
+    }
+
+    Position getOutputFocusPosition()
+    {
+        return m_outputFocusPosition;
     }
 
     void delete_()

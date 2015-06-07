@@ -40,10 +40,10 @@ import ilineprovider;
 import myassert;
 
 /**
- * ModifiedContentProvider is responsible for providing a view on the content
- * from an ILineProvider plus modifications. When a line of content is
- * requested, it checks its list of Modifications to see if it should return an
- * line from the ILineProvider or instead a line from one of the modifications.
+ * MergeResultContentProvider is provides a view on the content from an
+ * ILineProvider plus modifications. It asks ContentMapper where it can find
+ * each line and then either gets the edited line from the ContentMapper or the
+ * unmodified line from one of the ILineProviders.
  */
 class MergeResultContentProvider: IFormattedContentProvider
 {

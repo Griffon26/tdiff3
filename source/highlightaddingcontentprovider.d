@@ -31,7 +31,11 @@ import common;
 import iformattedcontentprovider;
 
 /**
- * 
+ * HighlightAddingContentProvider is an IFormattedContentProvider that
+ * highlights a selected range of lines. This applies some additional
+ * formatting on top of another IFormattedContentProvider and is used
+ * for highlighting the selected section in both the input and the output
+ * panes.
  */
 class HighlightAddingContentProvider: IFormattedContentProvider
 {

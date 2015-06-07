@@ -35,19 +35,26 @@ import theme;
 
 
 /**
-  * EditableContentPane is a ContentPane that handles keyboard input from
-  * ncurses and translates it into editing commands that it passes on to
-  * ContentEditor.
-  *
-  * <img src="http://yuml.me/diagram/scruffy/class/
-  *           [ContentPane]^-[EditableContentPane {bg:limegreen}],
-  *           [ContentPane]-gets content&gt;[IContentProvider],
-  *           [app]-sends keystrokes&gt;[EditableContentPane {bg:limegreen}],
-  *           [EditableContentPane {bg:limegreen}]-sends editing commands&gt;[ContentEditor],
-  *           [ContentEditor]-applies modifications&gt;[MergeResultContentProvider],
-  *           [IContentProvider]^-.-[MergeResultContentProvider]
-  *          "/>
-  */
+ * EditableContentPane is a FormattedContentPane that in addition to its
+ * content also draws a text cursor at a position previously set by the Ui.
+ *
+ * <object data="../uml/editablecontentpane.svg" type="image/svg+xml"></object>
+ */
+/*
+ * @startuml
+ * hide circle
+ * skinparam minClassWidth 70
+ * skinparam classArrowFontSize 8
+ * Ui --> EditableContentPane: sets cursor/focus position
+ * FormattedContentPane <|-- EditableContentPane
+ * FormattedContentPane --> "gets content" IFormattedContentProvider
+ *
+ * url of Ui is [[../ui/Ui.html]]
+ * url of FormattedContentPane is [[../formattedcontentpane/FormattedContentPane.html]]
+ * url of IFormattedContentProvider is [[../iformattedcontentprovider/IFormattedContentProvider.html]]
+ * @enduml
+ *
+ */
 class EditableContentPane: FormattedContentPane
 {
 private:

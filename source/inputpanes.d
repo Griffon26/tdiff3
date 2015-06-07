@@ -40,6 +40,21 @@ import theme;
 /**
  * InputPanes manages the FormattedContentPanes for the three input files and
  * synchronizes scrolling between them. It also draws borders and line numbers.
+ * <object data="../uml/inputpanes.svg" type="image/svg+xml"></object>
+ */
+/*
+ * @startuml
+ * hide circle
+ * skinparam minClassWidth 70
+ * skinparam classArrowFontSize 8
+ * Ui --> InputPanes: sets focus position
+ * InputPanes --> "3" HighlightAddingContentProvider: gets content
+ * InputPanes --> "3" LineNumberContentProvider: gets content
+ *
+ * url of Ui is [[../ui/Ui.html]]
+ * url of LineNumberContentProvider is [[../linenumbercontentprovider/LineNumberContentProvider.html]]
+ * url of HighlightAddingContentProvider is [[../highlightaddingcontentprovider/HighlightAddingContentProvider.html]]
+ * @enduml
  */
 class InputPanes
 {

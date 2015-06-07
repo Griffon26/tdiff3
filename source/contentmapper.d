@@ -50,7 +50,7 @@ enum LineState
 
 struct SectionInfo
 {
-    LineNumberRange[3] inputPaneLineNumbers;
+    LineNumberRange inputPaneLineNumbers;
     LineNumberRange mergeResultPaneLineNumbers;
     bool isConflict;
 }
@@ -231,11 +231,10 @@ version(unittest)
 
 
 /**
- * ModifiedContentProvider is responsible for providing a view on the content
- * from an ILineProvider plus modifications. When a line of content is
- * requested, it checks its list of Modifications to see if it should return an
- * line from the ILineProvider or instead a line from one of the modifications.
- */
+ * ContentMapper is responsible for providing the source and line number for a
+ * line in the merged output. One possible source is the list of edited lines
+ * that it also maintains.
+  */
 class ContentMapper
 {
 private:

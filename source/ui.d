@@ -40,6 +40,7 @@ import termkey;
 import colors;
 import common;
 import contenteditor;
+import contentmapper;
 import editablecontentpane;
 import highlightaddingcontentprovider;
 import icontentprovider;
@@ -64,6 +65,27 @@ extern (C) void sigwinch_handler(int signum)
     }
 }
 
+/**
+ * The UI is responsible for handling keyboard input and controlling the other
+ * UI-related classes, such as ContentPanes, the ContentEditor and the Theme.
+ *
+ * <object data="../uml/ui.svg" type="image/svg+xml"></object>
+ */
+/*
+ * @startuml
+ * hide circle
+ * skinparam minClassWidth 70
+ * skinparam classArrowFontSize 8
+ * class Ui
+ * Ui --> ContentEditor: sends editing commands\ngets focus/cursor position
+ * Ui --> InputPanes: sets focus position
+ * Ui --> EditableContentPane: sets focus/cursor position
+ *
+ * url of InputPanes is [[../inputpanes/InputPanes.html]]
+ * url of ContentEditor is [[../contenteditor/ContentEditor.html]]
+ * url of EditableContentPane is [[../editablecontentpane/EditableContentPane.html]]
+ * @enduml
+ */
 class Ui
 {
 private:
@@ -203,7 +225,7 @@ private:
     }
 
 public:
-    this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps, MergeResultContentProvider mergeResultContentProvider)
+    this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps, MergeResultContentProvider mergeResultContentProvider, ContentMapper contentMapper)
     {
         m_theme = new Theme();
 
@@ -264,7 +286,7 @@ public:
         m_inputPanes = new InputPanes(cps, lnps, m_theme);
         m_editableContentPane = new EditableContentPane(highlightedMergeResultContentProvider, m_theme);
 
-        m_editor = new ContentEditor(hcps, highlightedMergeResultContentProvider);
+        m_editor = new ContentEditor(hcps, highlightedMergeResultContentProvider, contentMapper);
     }
 
     void setPosition(int x, int y, int screenWidth, int screenHeight)
@@ -322,8 +344,6 @@ public:
         while( ((ret = termkey_waitkey(tk, &key)) != TermKeyResult.EOF) &&
                !isKey(key, 0, 'q') )
         {
-            bool updateFocus = true;
-
             if(ret == TermKeyResult.ERROR)
             {
                 int err = errno();
@@ -351,19 +371,15 @@ public:
                     {
                     case 'j':
                         m_inputPanes.scrollY(1);
-                        updateFocus = false;
                         break;
                     case 'i':
                         m_inputPanes.scrollY(-1);
-                        updateFocus = false;
                         break;
                     case 'k':
                         m_inputPanes.scrollX(-1);
-                        updateFocus = false;
                         break;
                     case 'l':
                         m_inputPanes.scrollX(1);
-                        updateFocus = false;
                         break;
                     case KEY_RESIZE:
                         handleResize();
@@ -411,17 +427,15 @@ public:
                             continue;
                         }
                     }
-                    else if(key.modifiers == TermKeyKeyMod.CTRL)
+                    else if(key.modifiers == TermKeyKeyMod.ALT)
                     {
                         switch(key.code.sym)
                         {
                         case TermKeySym.UP:
-                            m_inputPanes.scrollY(-1);
-                            updateFocus = false;
+                            m_editor.selectPreviousConflict();
                             break;
                         case TermKeySym.DOWN:
-                            m_inputPanes.scrollY(1);
-                            updateFocus = false;
+                            m_editor.selectNextConflict();
                             break;
                         default:
                             continue;
@@ -430,11 +444,13 @@ public:
                 }
             }
 
-            if(updateFocus)
+            if(m_editor.inputFocusNeedsUpdate())
             {
-                auto focusPositions = m_editor.getFocusPositions();
-                m_inputPanes.moveFocus(focusPositions.input);
-                m_editableContentPane.moveFocus(focusPositions.output);
+                m_inputPanes.moveFocus(m_editor.getInputFocusPosition());
+            }
+            if(m_editor.outputFocusNeedsUpdate())
+            {
+                m_editableContentPane.moveFocus(m_editor.getOutputFocusPosition());
             }
 
             auto cursorPos = m_editor.getCursorPosition();

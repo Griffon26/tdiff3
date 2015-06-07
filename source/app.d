@@ -22,24 +22,42 @@
 /**
  * Authors: Maurice van der Pot
  * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
- * <img src="http://yuml.me/diagram/scruffy;dir:LR/class/
- *           [ui]-sets focus position&gt;[InputContentPane],
- *           [ui]-sets focus/cursor position&gt;[EditableContentPane],
- *           [ui]-sends editing commands\ngets focus/cursor position&gt;[ContentEditor],
- *           [ContentEditor]-applies modifications&gt;[ContentMapper],
- *           [ContentEditor]-requests section location&gt;[ContentMapper],
- *           [ContentEditor]-gets line source&gt;[ContentMapper],
- *           [ContentEditor]-sets lines to be highlighted&gt;[Highlight Filter1],
- *           [ContentEditor]-sets lines to be highlighted&gt;[Highlight Filter2],
- *           [ContentEditor]-&gt;[FileLineProvider],
- *           [MergeResultContentProvider]-&gt;[FileLineProvider],
- *           [Diff3ContentProvider]-&gt;[FileLineProvider],
- *           [InputContentPane]-gets content&gt;[Highlight Filter1],
- *           [Highlight Filter1]-gets content&gt;[Diff3ContentProvider],
- *           [EditableContentPane]-gets content&gt;[Highlight Filter2],
- *           [Highlight Filter2]-gets content&gt;[MergeResultContentProvider],
- *           [MergeResultContentProvider]-gets line source&gt;[ContentMapper]
- *          "/>
+ *
+ * <object data="uml/app.svg" type="image/svg+xml"></object>
+ */
+/*
+ * @startuml
+ * hide circle
+ * skinparam minClassWidth 70
+ * skinparam classArrowFontSize 8
+ * Ui --> ContentEditor: sends editing commands\ngets focus/cursor position
+ * Ui --> InputPanes: sets focus position
+ * Ui --> EditableContentPane: sets focus/cursor position
+ * ContentEditor --> ContentMapper: applies modifications\nrequests section location\ngets line source
+ * ContentEditor --> "3" HighlightAddingContentProvider1: sets input lines to be highlighted
+ * ContentEditor --> "1" HighlightAddingContentProvider2: sets output lines to be highlighted
+ * ContentEditor --> ILineProvider: gets line
+ * InputPanes --> "3" HighlightAddingContentProvider1: gets content
+ * InputPanes --> "3" LineNumberContentProvider: gets content
+ * EditableContentPane --> HighlightAddingContentProvider2: gets content
+ * HighlightAddingContentProvider1 --> Diff3ContentProvider: gets content
+ * HighlightAddingContentProvider2 --> MergeResultContentProvider: gets content
+ * MergeResultContentProvider --> ContentMapper: gets line source
+ * MergeResultContentProvider --> "3" ILineProvider: gets line
+ * Diff3ContentProvider --> ILineProvider: gets line
+ *
+ * url of Ui is [[../ui/Ui.html]]
+ * url of InputPanes is [[../inputpanes/InputPanes.html]]
+ * url of ContentEditor is [[../contenteditor/ContentEditor.html]]
+ * url of EditableContentPane is [[../editablecontentpane/EditableContentPane.html]]
+ * url of LineNumberContentProvider is [[../linenumbercontentprovider/LineNumberContentProvider.html]]
+ * url of HighlightAddingContentProvider1 is [[../highlightaddingcontentprovider/HighlightAddingContentProvider.html]]
+ * url of HighlightAddingContentProvider2 is [[../highlightaddingcontentprovider/HighlightAddingContentProvider.html]]
+ * url of Diff3ContentProvider is [[../diff3contentprovider/Diff3ContentProvider.html]]
+ * url of MergeResultContentProvider is [[../mergeresultcontentprovider/MergeResultContentProvider.html]]
+ * url of ILineProvider is [[../ilineprovider/ILineProvider.html]]
+ * url of ContentMapper is [[../contentmapper/ContentMapper.html]]
+ * @enduml
  */
 module app;
 
@@ -141,7 +159,7 @@ void main()
 
     auto mergeResultContentProvider = new MergeResultContentProvider(contentMapper, lps[0], lps[1], lps[2]);
 
-    auto ui = new Ui(cps, lnps, mergeResultContentProvider);
+    auto ui = new Ui(cps, lnps, mergeResultContentProvider, contentMapper);
     ui.handleResize();
     ui.mainLoop();
 }
