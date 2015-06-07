@@ -202,6 +202,8 @@ public:
     }
 }
 
+alias Array!MergeResultSection MergeResultSections;
+
 version(unittest)
 {
     private Tuple!(bool, int, int, int, int, int, int, int, int) toTuple(MergeResultSection section)
@@ -217,7 +219,7 @@ version(unittest)
                      section.m_diff3LineNumbers.lastLine);
     }
 
-    private Tuple!(bool, int, int, int, int, int, int, int, int)[] toTuples(DList!MergeResultSection sections)
+    private Tuple!(bool, int, int, int, int, int, int, int, int)[] toTuples(MergeResultSections sections)
     {
         Tuple!(bool, int, int, int, int, int, int, int, int)[] sectionTuples;
         foreach(section; sections)
@@ -238,14 +240,14 @@ version(unittest)
 class ContentMapper
 {
 private:
-    DList!MergeResultSection m_mergeResultSections;
+    MergeResultSections m_mergeResultSections;
 
 public:
     this()
     {
     }
 
-    private static DList!MergeResultSection calculateMergeResultSections(Diff3LineArray d3la)
+    private static MergeResultSections calculateMergeResultSections(Diff3LineArray d3la)
     {
         DList!MergeResultSection mergeResultSections = make!(DList!MergeResultSection);
 
@@ -305,7 +307,7 @@ public:
             }
             mergeResultSections.insertBack(section);
         }
-        return mergeResultSections;
+        return MergeResultSections(mergeResultSections[]);
     }
 
     unittest
@@ -474,8 +476,12 @@ public:
 
     SectionInfo getSectionInfo(int sectionIndex)
     {
-        // TODO: implement
-        return SectionInfo();
+        MergeResultSection section = m_mergeResultSections[sectionIndex];
+        SectionInfo info;
+        info.inputPaneLineNumbers = section.m_diff3LineNumbers;
+        info.isConflict = section.m_isConflict;
+
+        return info;
     }
 
     string getEditedLine(int sectionIndex, int lineNumber)

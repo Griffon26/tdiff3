@@ -241,11 +241,13 @@ public:
 
     Position getInputFocusPosition()
     {
+        m_inputFocusChanged = false;
         return m_inputFocusPosition;
     }
 
     Position getOutputFocusPosition()
     {
+        m_outputFocusChanged = false;
         return m_outputFocusPosition;
     }
 

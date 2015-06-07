@@ -345,6 +345,8 @@ version(unittest)
     auto lp = new shared FakeLineProvider();
 }
 
+/+
+
 unittest
 {
     /* Check if the original lines are returned if there are no modifications */
@@ -491,4 +493,5 @@ unittest
     assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 3);
 }
 
++/
 
