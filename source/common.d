@@ -30,6 +30,7 @@ import std.c.locale;
 import std.c.stddef;
 import std.container;
 import std.stdio;
+import std.string;
 import std.utf;
 
 import myassert;
@@ -63,7 +64,11 @@ int lengthInColumns(string s, bool acceptUnprintable)
     foreach(dchar c; byDchar(s))
     {
         auto width = customWcWidth(c, acceptUnprintable);
-        if(width != -1)
+        if(c == '\t')
+        {
+            nrOfColumns = (nrOfColumns / 8 + 1) * 8;
+        }
+        else if(width != -1)
         {
             nrOfColumns += width;
         }

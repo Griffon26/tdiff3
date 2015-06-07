@@ -26,7 +26,9 @@
 module highlightaddingcontentprovider;
 
 import std.algorithm;
+import std.conv;
 import std.signals;
+import std.string;
 import std.typecons;
 
 import common;
@@ -44,6 +46,8 @@ class HighlightAddingContentProvider: IFormattedContentProvider
 private:
     IFormattedContentProvider m_originalContentProvider;
     LineNumberRange m_linesToHighlight;
+    int m_lastRequestedLine;
+    int m_lastLineLength;
 
     mixin Signal!(LineNumberRange) m_linesChanged;
 
@@ -55,6 +59,8 @@ public:
         m_linesToHighlight.lastLine = 0;
 
         m_originalContentProvider.connectLineChangeObserver(&linesChanged);
+
+        m_lastRequestedLine = -1;
     }
 
     void setHighlight(LineNumberRange linesToHighlight)
@@ -67,46 +73,47 @@ public:
     Nullable!string get(int line)
     {
         auto originalLine = m_originalContentProvider.get(line);
+        string text;
+
+        if(originalLine.isNull())
+        {
+            text = "\n";
+        }
+        else
+        {
+            text = originalLine.get();
+        }
+
+        m_lastRequestedLine = line;
+        m_lastLineLength = to!int(text.length);
 
         if(m_linesToHighlight.contains(line))
         {
-            string text;
+            int padding = to!int(m_originalContentProvider.getContentWidth() - text.lengthInColumns(true));
 
-            log("with highlight\n");
-
-            if(originalLine.isNull())
-            {
-                text = "\n";
-            }
-            else
-            {
-                text = originalLine.get();
-            }
+            log(format("lastLinePadding for line %d was %d", line, padding));
 
             char[] restOfLine;
-            restOfLine.length = m_originalContentProvider.getContentWidth() - text.lengthInColumns(true);
+            restOfLine.length = padding;
             restOfLine[] = ' ';
+
+            m_lastLineLength += padding;
 
             string result = (text[0..$-1] ~ restOfLine ~ text[$-1..$]).idup;
             //string result = text;
             originalLine = result;
         }
-        else
-        {
-            log("without highlight\n");
-        }
-
 
         return originalLine;
     }
 
     StyleList getFormat(int line)
     {
+        assert(line == m_lastRequestedLine);
+
         StyleList styleList = m_originalContentProvider.getFormat(line);
         if(m_linesToHighlight.contains(line))
         {
-            log("with highlight\n");
-
             int styleLength = 0;
             foreach(ref styleFragment; styleList)
             {
@@ -116,11 +123,7 @@ public:
                     styleFragment.style = DiffStyle.ALL_SAME_HIGHLIGHTED;
                 }
             }
-            styleList.insertBack(StyleFragment(DiffStyle.ALL_SAME_HIGHLIGHTED, getContentWidth() - styleLength));
-        }
-        else
-        {
-            log("without highlight\n");
+            styleList.insertBack(StyleFragment(DiffStyle.ALL_SAME_HIGHLIGHTED, m_lastLineLength - styleLength));
         }
         return styleList;
     }
