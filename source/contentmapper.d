@@ -500,6 +500,37 @@ public:
         return info;
     }
 
+    int findNextConflictingSection(int sectionIndex)
+    {
+        sectionIndex++;
+        while(sectionIndex < m_mergeResultSections.length && !m_mergeResultSections[sectionIndex].m_isConflict)
+        {
+            sectionIndex++;
+        }
+
+        /* If we got to the end before we found another conflicting section, then return -1 */
+        if(sectionIndex == m_mergeResultSections.length)
+        {
+            return -1;
+        }
+        else
+        {
+            return sectionIndex;
+        }
+    }
+
+    int findPreviousConflictingSection(int sectionIndex)
+    {
+        sectionIndex--;
+        while(sectionIndex >= 0 && !m_mergeResultSections[sectionIndex].m_isConflict)
+        {
+            sectionIndex--;
+        }
+
+        /* If we got to the beginning before we found another conflicting section, then return -1 */
+        return sectionIndex;
+    }
+
     string getEditedLine(int sectionIndex, int lineNumber)
     {
         // TODO: implement

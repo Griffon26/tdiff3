@@ -100,36 +100,36 @@ public:
         m_contentMapper = contentMapper;
     }
 
+    private void setSelectedSection(int sectionIndex)
+    {
+        m_selectedSection = sectionIndex;
+
+        auto sectionInfo = m_contentMapper.getSectionInfo(sectionIndex);
+        foreach(cp; m_d3cps)
+        {
+            cp.setHighlight(sectionInfo.inputPaneLineNumbers);
+        }
+        m_mcp.setHighlight(sectionInfo.mergeResultPaneLineNumbers);
+        updateInputFocusPosition(Position(sectionInfo.inputPaneLineNumbers.firstLine, 0));
+        updateOutputFocusPosition(Position(sectionInfo.mergeResultPaneLineNumbers.firstLine, 0));
+    }
+
     /* Editor operations */
     void selectNextConflict()
     {
-        if(m_selectedSection < m_contentMapper.getNumberOfSections() - 1)
+        int nextConflict = m_contentMapper.findNextConflictingSection(m_selectedSection);
+        if(nextConflict != -1)
         {
-            m_selectedSection++;
-            auto sectionInfo = m_contentMapper.getSectionInfo(m_selectedSection);
-            foreach(cp; m_d3cps)
-            {
-                cp.setHighlight(sectionInfo.inputPaneLineNumbers);
-            }
-            m_mcp.setHighlight(sectionInfo.mergeResultPaneLineNumbers);
-            updateInputFocusPosition(Position(sectionInfo.inputPaneLineNumbers.firstLine, 0));
-            updateOutputFocusPosition(Position(sectionInfo.mergeResultPaneLineNumbers.firstLine, 0));
+            setSelectedSection(nextConflict);
         }
     }
 
     void selectPreviousConflict()
     {
-        if(m_selectedSection > 0)
+        int previousConflict = m_contentMapper.findPreviousConflictingSection(m_selectedSection);
+        if(previousConflict != -1)
         {
-            m_selectedSection--;
-            auto sectionInfo = m_contentMapper.getSectionInfo(m_selectedSection);
-            foreach(cp; m_d3cps)
-            {
-                cp.setHighlight(sectionInfo.inputPaneLineNumbers);
-            }
-            m_mcp.setHighlight(sectionInfo.mergeResultPaneLineNumbers);
-            updateInputFocusPosition(Position(sectionInfo.inputPaneLineNumbers.firstLine, 0));
-            updateOutputFocusPosition(Position(sectionInfo.mergeResultPaneLineNumbers.firstLine, 0));
+            setSelectedSection(previousConflict);
         }
     }
 
