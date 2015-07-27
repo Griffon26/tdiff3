@@ -486,6 +486,17 @@ public:
         info.inputPaneLineNumbers = section.m_diff3LineNumbers;
         info.isConflict = section.m_isConflict;
 
+        // TODO: Optimize this to avoid looping over all sections every time section info is requested.
+        int i;
+        int firstLine = 0;
+        for(i = 0; i < sectionIndex; i++)
+        {
+            firstLine += m_mergeResultSections[i].getOutputSize();
+        }
+        int lastLine = firstLine + m_mergeResultSections[i].getOutputSize() - 1;
+        info.mergeResultPaneLineNumbers.firstLine = firstLine;
+        info.mergeResultPaneLineNumbers.lastLine = lastLine;
+
         return info;
     }
 
