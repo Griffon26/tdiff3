@@ -48,10 +48,19 @@ enum LineState
     NONE
 }
 
+/**
+ * Information about the location of a section within the content for each
+ * pane, as well as the conflict status of the section.
+ */
 struct SectionInfo
 {
+    /** The content line numbers in the input panes associated with the section */
     LineNumberRange inputPaneLineNumbers;
+
+    /** The content line numbers in the merge result pane associated with the section */
     LineNumberRange mergeResultPaneLineNumbers;
+
+    /** Whether or not the section is a conflict */
     bool isConflict;
 }
 
@@ -86,10 +95,11 @@ public:
 
     int getOutputSize()
     {
+        int count = 0;
+
         if(m_isConflict)
         {
             // TODO: apply modifications
-            auto count = 0;
 
             if(m_selectedSources.length == 0)
             {
@@ -110,17 +120,19 @@ public:
                     }
                 }
             }
-            return count;
         }
         else
         {
-            return m_inputLineNumbers[DEFAULT_LINE_SOURCE].lastLine - m_inputLineNumbers[DEFAULT_LINE_SOURCE].firstLine + 1;
+            count = m_inputLineNumbers[DEFAULT_LINE_SOURCE].lastLine - m_inputLineNumbers[DEFAULT_LINE_SOURCE].firstLine + 1;
         }
+
+        return count;
     }
 
     void toggle(LineSource lineSource)
     {
         assert(m_isConflict);
+
         if(m_selectedSources.canFind(lineSource))
         {
             m_selectedSources = m_selectedSources.where( (LineSource ls) { return ls != lineSource; } );
@@ -147,6 +159,7 @@ public:
                 lineInfo.lineNumber = -1;
                 return lineInfo;
             }
+
             foreach(selectedSource; m_selectedSources)
             {
                 int linesFromSelectedSource;
@@ -176,6 +189,8 @@ public:
                         return lineInfo;
                     }
                 }
+
+                relativeLineNumber -= linesFromSelectedSource;
             }
             assert(false);
         }
@@ -529,6 +544,14 @@ public:
 
         /* If we got to the beginning before we found another conflicting section, then return -1 */
         return sectionIndex;
+    }
+
+    void toggleSectionSource(int sectionIndex, LineSource lineSource)
+    {
+        assert(sectionIndex >= 0);
+        assert(sectionIndex < m_mergeResultSections.length);
+
+        m_mergeResultSections[sectionIndex].toggle(lineSource);
     }
 
     string getEditedLine(int sectionIndex, int lineNumber)

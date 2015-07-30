@@ -364,56 +364,55 @@ public:
                 termkey_strfkey(tk, buffer.ptr, buffer.sizeof, &key, TermKeyFormat.VIM);
                 log(buffer.idup);
 
-                if(key.type == TermKeyType.UNICODE &&
-                   key.modifiers == 0)
+                if(key.modifiers == 0)
                 {
-                    switch(key.code.codepoint)
+                    if(key.type == TermKeyType.UNICODE)
                     {
-                    case 'j':
-                        m_inputPanes.scrollY(1);
-                        break;
-                    case 'i':
-                        m_inputPanes.scrollY(-1);
-                        break;
-                    case 'k':
-                        m_inputPanes.scrollX(-1);
-                        break;
-                    case 'l':
-                        m_inputPanes.scrollX(1);
-                        break;
-                    case KEY_RESIZE:
-                        handleResize();
-                        break;
-                    case KEY_LEFT:
-                        m_editor.move(ContentEditor.Movement.LEFT, false);
-                        break;
-                    case KEY_RIGHT:
-                        m_editor.move(ContentEditor.Movement.RIGHT, false);
-                        break;
-                    case KEY_UP:
-                        m_editor.move(ContentEditor.Movement.UP, false);
-                        break;
-                    case KEY_DOWN:
-                        m_editor.move(ContentEditor.Movement.DOWN, false);
-                        break;
-                    case KEY_HOME:
-                        m_editor.move(ContentEditor.Movement.LINEHOME, false);
-                        break;
-                    case KEY_END:
-                        m_editor.move(ContentEditor.Movement.LINEEND, false);
-                        break;
-                    case KEY_DC:
-                        m_editor.delete_();
-                        //updateScrollLimits();
-                        //drawMissingLines(m_scrollPositionY, 0, m_height);
-                        break;
-                    default:
-                        break;
+                        switch(key.code.codepoint)
+                        {
+                        case 'j':
+                            m_inputPanes.scrollY(1);
+                            break;
+                        case 'i':
+                            m_inputPanes.scrollY(-1);
+                            break;
+                        case 'k':
+                            m_inputPanes.scrollX(-1);
+                            break;
+                        case 'l':
+                            m_inputPanes.scrollX(1);
+                            break;
+                        case KEY_RESIZE:
+                            handleResize();
+                            break;
+                        case KEY_LEFT:
+                            m_editor.move(ContentEditor.Movement.LEFT, false);
+                            break;
+                        case KEY_RIGHT:
+                            m_editor.move(ContentEditor.Movement.RIGHT, false);
+                            break;
+                        case KEY_UP:
+                            m_editor.move(ContentEditor.Movement.UP, false);
+                            break;
+                        case KEY_DOWN:
+                            m_editor.move(ContentEditor.Movement.DOWN, false);
+                            break;
+                        case KEY_HOME:
+                            m_editor.move(ContentEditor.Movement.LINEHOME, false);
+                            break;
+                        case KEY_END:
+                            m_editor.move(ContentEditor.Movement.LINEEND, false);
+                            break;
+                        case KEY_DC:
+                            m_editor.delete_();
+                            //updateScrollLimits();
+                            //drawMissingLines(m_scrollPositionY, 0, m_height);
+                            break;
+                        default:
+                            continue;
+                        }
                     }
-                }
-                else if(key.type == TermKeyType.KEYSYM)
-                {
-                    if(key.modifiers == 0)
+                    else if(key.type == TermKeyType.KEYSYM)
                     {
                         switch(key.code.sym)
                         {
@@ -427,7 +426,27 @@ public:
                             continue;
                         }
                     }
-                    else if(key.modifiers == TermKeyKeyMod.ALT)
+                }
+                else if(key.modifiers == TermKeyKeyMod.ALT)
+                {
+                    if(key.type == TermKeyType.UNICODE)
+                    {
+                        switch(key.code.codepoint)
+                        {
+                        case '1':
+                            m_editor.toggleCurrentSectionSource(LineSource.A);
+                            break;
+                        case '2':
+                            m_editor.toggleCurrentSectionSource(LineSource.B);
+                            break;
+                        case '3':
+                            m_editor.toggleCurrentSectionSource(LineSource.C);
+                            break;
+                        default:
+                            continue;
+                        }
+                    }
+                    else if(key.type == TermKeyType.KEYSYM)
                     {
                         switch(key.code.sym)
                         {

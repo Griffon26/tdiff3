@@ -1,10 +1,11 @@
 Already implemented:
-- kdiff3's comparison algorithm (except for fineDiff)
+- kdiff3's comparison algorithm
 - diff view of three files. The only thing you can do is scroll one line/column at a time.
 
 I plan to follow the following list from top to bottom for implementing new
 functionality. 
 
+- add to documentation that xterm users should set: XTerm*metaSendsEscape: true, otherwise alt-1 a.o. won't work
 - fix bug: d3ll should not have any completely empty entries at the end
 - implement ncurses ui
   - graceful degradation of colors
@@ -20,7 +21,6 @@ functionality.
 
     
   - also support just 2 files
-  - implement resizing when the terminal is resized
   - add scrollbar (read-only, just to show where you are in the file)
   - create editable window (text only edited on screen, not backed by memory/file)
 
@@ -60,7 +60,6 @@ functionality.
 - implement manual editing of the merge result
   - add configuration file and settings dialog
     - kdiff3's settings: tab inserts spaces, tab size, auto indentation
-- implement kdiff3's finediff
 - implement mmap for input file reading
 - implement decoding filter for non-utf8 input files
 
