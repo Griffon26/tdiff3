@@ -27,6 +27,7 @@ module contentmapper;
 
 import std.algorithm;
 import std.container;
+import std.signals;
 import std.string;
 import std.typecons;
 
@@ -256,6 +257,8 @@ class ContentMapper
 {
 private:
     MergeResultSections m_mergeResultSections;
+
+    mixin Signal!(LineNumberRange) m_linesChanged;
 
 public:
     this()
@@ -552,6 +555,12 @@ public:
         assert(sectionIndex < m_mergeResultSections.length);
 
         m_mergeResultSections[sectionIndex].toggle(lineSource);
+
+        auto sectionInfo = getSectionInfo(sectionIndex);
+        LineNumberRange range;
+        range.firstLine = sectionInfo.mergeResultPaneLineNumbers.firstLine;
+        range.lastLine = -1;
+        m_linesChanged.emit(range);
     }
 
     string getEditedLine(int sectionIndex, int lineNumber)
@@ -564,6 +573,11 @@ public:
     {
         // TODO: implement
         return 1000;
+    }
+
+    void connectLineChangeObserver(void delegate(LineNumberRange lines) d)
+    {
+        m_linesChanged.connect(d);
     }
 }
 

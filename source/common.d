@@ -342,10 +342,27 @@ immutable trace =`
     }
 `;
 
+/**
+ * A range of line numbers
+ */
 struct LineNumberRange
 {
+    /** The first line in the range. -1 can be used to indicate that this range
+     * is not valid. A function that calculates overlap between ranges could
+     * return this if there is no overlap.
+     */
     int firstLine;
+
+    /** The last line in the range. -1 can be used to indicate that this range
+     * has no end. Most functions accepting ranges will require the last line
+     * to not be -1, so check the preconditions.
+     */
     int lastLine;
+
+    bool isFinite()
+    {
+        return lastLine != -1 && isValid();
+    }
 
     bool isValid()
     {
@@ -353,25 +370,95 @@ struct LineNumberRange
     }
 }
 
+/**
+ * Checks if the specified line is part of the specified range. The range may be infinite.
+ */
 bool contains(LineNumberRange range, int line)
 {
     assert(range.isValid);
 
-    return line >= range.firstLine && line <= range.lastLine;
+    return line >= range.firstLine && (line <= range.lastLine || !range.isFinite());
 }
 
 /**
  * overlap will return the range of lines that is present in both input ranges.
  * The returned range must be checked for validity, because if there is no
- * overlap it will be invalid.
+ * overlap it will be invalid. The input ranges may be infinite.
  */
 LineNumberRange overlap(LineNumberRange thisRange, LineNumberRange otherRange)
 {
     assert(thisRange.isValid);
     assert(otherRange.isValid);
 
-    return LineNumberRange(max(thisRange.firstLine, otherRange.firstLine),
-                           min(thisRange.lastLine, otherRange.lastLine));
+    int firstLine = max(thisRange.firstLine, otherRange.firstLine);
+
+    int lastLine;
+    if(thisRange.isFinite())
+    {
+        if(otherRange.isFinite())
+        {
+            lastLine = min(thisRange.lastLine, otherRange.lastLine);
+        }
+        else // otherRange is infinite
+        {
+            lastLine = thisRange.lastLine;
+        }
+    }
+    else // this range is infinite
+    {
+        // Last is last of other range, regardless of whether that's -1 or not
+        lastLine = otherRange.lastLine;
+    }
+
+    if((lastLine != -1) && (firstLine > lastLine))
+    {
+        firstLine = lastLine = -1;
+    }
+
+    return LineNumberRange(firstLine, lastLine);
+}
+
+unittest
+{
+    /* First contained in second */
+    assertEqual(overlap(LineNumberRange(0, 2), LineNumberRange(0, 5)), LineNumberRange(0, 2));
+    assertEqual(overlap(LineNumberRange(2, 5), LineNumberRange(0, 5)), LineNumberRange(2, 5));
+    assertEqual(overlap(LineNumberRange(1, 4), LineNumberRange(0, 5)), LineNumberRange(1, 4));
+
+    /* Second contained in first */
+    assertEqual(overlap(LineNumberRange(0, 5), LineNumberRange(0, 2)), LineNumberRange(0, 2));
+    assertEqual(overlap(LineNumberRange(0, 5), LineNumberRange(2, 5)), LineNumberRange(2, 5));
+    assertEqual(overlap(LineNumberRange(0, 5), LineNumberRange(1, 4)), LineNumberRange(1, 4));
+
+    /* Some overlap */
+    assertEqual(overlap(LineNumberRange(0, 3), LineNumberRange(2, 5)), LineNumberRange(2, 3));
+    assertEqual(overlap(LineNumberRange(0, 3), LineNumberRange(3, 5)), LineNumberRange(3, 3));
+    assertEqual(overlap(LineNumberRange(2, 3), LineNumberRange(0, 3)), LineNumberRange(2, 3));
+    assertEqual(overlap(LineNumberRange(3, 5), LineNumberRange(0, 3)), LineNumberRange(3, 3));
+
+    /* No overlap */
+    assertEqual(overlap(LineNumberRange(0, 2), LineNumberRange(3, 5)), LineNumberRange(-1, -1));
+    assertEqual(overlap(LineNumberRange(3, 5), LineNumberRange(0, 2)), LineNumberRange(-1, -1));
+
+    /* First range is infinite, non-infinite overlap */
+    assertEqual(overlap(LineNumberRange(2, -1), LineNumberRange(0, 1)), LineNumberRange(-1, -1));
+    assertEqual(overlap(LineNumberRange(2, -1), LineNumberRange(0, 2)), LineNumberRange(2, 2));
+    assertEqual(overlap(LineNumberRange(2, -1), LineNumberRange(0, 5)), LineNumberRange(2, 5));
+    assertEqual(overlap(LineNumberRange(2, -1), LineNumberRange(2, 5)), LineNumberRange(2, 5));
+    assertEqual(overlap(LineNumberRange(2, -1), LineNumberRange(4, 5)), LineNumberRange(4, 5));
+
+    /* Second range is infinite, non-infinite overlap */
+    assertEqual(overlap(LineNumberRange(0, 1), LineNumberRange(2, -1)), LineNumberRange(-1, -1));
+    assertEqual(overlap(LineNumberRange(0, 2), LineNumberRange(2, -1)), LineNumberRange(2, 2));
+    assertEqual(overlap(LineNumberRange(0, 5), LineNumberRange(2, -1)), LineNumberRange(2, 5));
+    assertEqual(overlap(LineNumberRange(2, 5), LineNumberRange(2, -1)), LineNumberRange(2, 5));
+    assertEqual(overlap(LineNumberRange(4, 5), LineNumberRange(2, -1)), LineNumberRange(4, 5));
+
+    /* Infinite overlap */
+    assertEqual(overlap(LineNumberRange(2, -1), LineNumberRange(0, -1)), LineNumberRange(2, -1));
+    assertEqual(overlap(LineNumberRange(2, -1), LineNumberRange(2, -1)), LineNumberRange(2, -1));
+    assertEqual(overlap(LineNumberRange(2, -1), LineNumberRange(5, -1)), LineNumberRange(5, -1));
+
 }
 
 /**

@@ -136,6 +136,7 @@ public:
     void toggleCurrentSectionSource(LineSource lineSource)
     {
         m_contentMapper.toggleSectionSource(m_selectedSection, lineSource);
+        setSelectedSection(m_selectedSection);
     }
 
     void moveTo(Position newPos, bool withSelection)

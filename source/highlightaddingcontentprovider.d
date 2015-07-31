@@ -140,13 +140,13 @@ public:
 
     void connectLineChangeObserver(void delegate(LineNumberRange lines) d)
     {
-        /* TODO: make sure to register for line changes at the content mapper */
         m_linesChanged.connect(d);
     }
 
     void linesChanged(LineNumberRange lines)
     {
-        /* TODO: implement */
+        /* Pass through events from below */
+        m_linesChanged.emit(lines);
     }
 }
 
