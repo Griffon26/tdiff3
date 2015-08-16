@@ -76,6 +76,7 @@ struct LineInfo
     int lineNumber;
 }
 
+/** Information about the lines in a merge section and where their content comes from. */
 class MergeResultSection
 {
 private:
@@ -207,7 +208,7 @@ public:
         }
     }
 
-    /* Retrieve a line from this section. The first line of the section is line 0. */
+    /** Retrieve a line from this section. The first line of the section is line 0. */
     string getEditedLine(int relativeLineNumber)
     {
         assert(m_isConflict);
@@ -215,6 +216,11 @@ public:
         /* TODO: implement */
 
         return " *** edited *** ";
+    }
+
+    bool isSolved()
+    {
+        return !m_isConflict || m_selectedSources.length != 0;
     }
 }
 
@@ -249,10 +255,11 @@ version(unittest)
 
 
 /**
- * ContentMapper is responsible for providing the source and line number for a
- * line in the merged output. One possible source is the list of edited lines
- * that it also maintains.
-  */
+ * The ContentMapper is responsible for keeping track of the source for each
+ * line in the merge result. One possible source is the list of edited lines
+ * that it also maintains. It must also be able to provide location and state
+ * information for all conflicted sections in the merge result.
+ */
 class ContentMapper
 {
 private:
@@ -518,15 +525,15 @@ public:
         return info;
     }
 
-    int findNextConflictingSection(int sectionIndex)
+    private int findNextSectionUsingPredicate(int sectionIndex, bool delegate(MergeResultSection s) pred)
     {
         sectionIndex++;
-        while(sectionIndex < m_mergeResultSections.length && !m_mergeResultSections[sectionIndex].m_isConflict)
+        while(sectionIndex < m_mergeResultSections.length && !pred(m_mergeResultSections[sectionIndex]))
         {
             sectionIndex++;
         }
 
-        /* If we got to the end before we found another conflicting section, then return -1 */
+        /* If we got to the end before we found another matching section, then return -1 */
         if(sectionIndex == m_mergeResultSections.length)
         {
             return -1;
@@ -537,16 +544,42 @@ public:
         }
     }
 
-    int findPreviousConflictingSection(int sectionIndex)
+    int findNextConflictingSection(int sectionIndex)
+    {
+        return findNextSectionUsingPredicate(sectionIndex, s => s.m_isConflict);
+    }
+
+    int findNextUnsolvedConflictingSection(int sectionIndex)
+    {
+        return findNextSectionUsingPredicate(sectionIndex, s => !s.isSolved());
+    }
+
+    private int findPreviousSectionUsingPredicate(int sectionIndex, bool delegate(MergeResultSection s) pred)
     {
         sectionIndex--;
-        while(sectionIndex >= 0 && !m_mergeResultSections[sectionIndex].m_isConflict)
+        while(sectionIndex >= 0 && !pred(m_mergeResultSections[sectionIndex]))
         {
             sectionIndex--;
         }
 
-        /* If we got to the beginning before we found another conflicting section, then return -1 */
+        /* If we got to the beginning before we found another matching section, then return -1 */
         return sectionIndex;
+    }
+
+    int findPreviousConflictingSection(int sectionIndex)
+    {
+        return findPreviousSectionUsingPredicate(sectionIndex, s => s.m_isConflict);
+    }
+
+    int findPreviousUnsolvedConflictingSection(int sectionIndex)
+    {
+        return findPreviousSectionUsingPredicate(sectionIndex, s => !s.isSolved());
+    }
+
+    bool allConflictsSolved()
+    {
+        /* TODO: implement */
+        return all!((MergeResultSection s) { return s.isSolved(); } ) (m_mergeResultSections[]);
     }
 
     void toggleSectionSource(int sectionIndex, LineSource lineSource)
@@ -571,8 +604,14 @@ public:
 
     int getContentHeight()
     {
-        // TODO: implement
-        return 1000;
+        // TODO: Optimize this to avoid looping over all sections every time content height is requested
+        int contentHeight = 0;
+        foreach(section; m_mergeResultSections)
+        {
+            contentHeight += section.getOutputSize();
+        }
+
+        return contentHeight;
     }
 
     void connectLineChangeObserver(void delegate(LineNumberRange lines) d)

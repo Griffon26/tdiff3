@@ -54,8 +54,8 @@ const uint MAX_NR_OF_FILES = 3;
 class GnuDiff
 {
     private string m_tempdir;
-    private FifoWriter m_fifoWriters[MAX_NR_OF_FILES];
-    private shared ILineProvider m_lineProviders[MAX_NR_OF_FILES];
+    private FifoWriter[MAX_NR_OF_FILES] m_fifoWriters;
+    private shared ILineProvider[MAX_NR_OF_FILES] m_lineProviders;
 
     this(string tempdir)
     {

@@ -133,6 +133,24 @@ public:
         }
     }
 
+    void selectNextUnsolvedConflict()
+    {
+        int nextConflict = m_contentMapper.findNextUnsolvedConflictingSection(m_selectedSection);
+        if(nextConflict != -1)
+        {
+            setSelectedSection(nextConflict);
+        }
+    }
+
+    void selectPreviousUnsolvedConflict()
+    {
+        int previousConflict = m_contentMapper.findPreviousUnsolvedConflictingSection(m_selectedSection);
+        if(previousConflict != -1)
+        {
+            setSelectedSection(previousConflict);
+        }
+    }
+
     void toggleCurrentSectionSource(LineSource lineSource)
     {
         m_contentMapper.toggleSectionSource(m_selectedSection, lineSource);

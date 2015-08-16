@@ -29,6 +29,7 @@ import std.algorithm;
 import std.container;
 import std.container.util;
 import std.conv;
+import std.stdio;
 import std.string;
 import std.typecons;
 
@@ -50,43 +51,87 @@ private:
     ContentMapper m_contentMapper;
     shared ILineProvider[3] m_lps;
     DList!MergeResultSection m_mergeResultSections;
+    string m_outputFileName;
+
+    enum LineType
+    {
+        UNRESOLVED_CONFLICT,
+        NO_SOURCE_LINE,
+        NORMAL
+    }
 
 public:
     this(ContentMapper contentMapper,
          shared ILineProvider lps0,
          shared ILineProvider lps1,
-         shared ILineProvider lps2)
+         shared ILineProvider lps2,
+         string outputFileName)
     {
         m_contentMapper = contentMapper;
         m_lps[0] = lps0;
         m_lps[1] = lps1;
         m_lps[2] = lps2;
+        m_outputFileName = outputFileName;
     }
 
     /* IFormattedContentProvider methods */
 
-    Nullable!string get(int line)
+    private auto getLine(int lineNumber, bool forSavingToFile)
     {
-        Nullable!string result;
-        auto lineInfo = m_contentMapper.getMergeResultLineInfo(line);
+        string text = "";
+        LineType lineType;
+
+        auto lineInfo = m_contentMapper.getMergeResultLineInfo(lineNumber);
 
         final switch(lineInfo.state)
         {
         case LineState.EDITED:
-            result = m_contentMapper.getEditedLine(lineInfo.sectionIndex, lineInfo.lineNumber);
+            text = m_contentMapper.getEditedLine(lineInfo.sectionIndex, lineInfo.lineNumber);
+            lineType = LineType.NORMAL;
+
             break;
         case LineState.NONE:
-            result = "<unresolved conflict>\n";
+            assert(!forSavingToFile);
+            lineType = LineType.UNRESOLVED_CONFLICT;
+
             break;
         case LineState.ORIGINAL:
             if(lineInfo.lineNumber == -1)
             {
-                result = "<no source line>\n";
+                lineType = LineType.NO_SOURCE_LINE;
             }
             else
             {
-                result = m_lps[lineInfo.source].get(lineInfo.lineNumber);
+                auto result = m_lps[lineInfo.source].get(lineInfo.lineNumber);
+
+                /* this should always be a valid line, otherwise contentmapper
+                 * shouldn't have given us a valid line number and a source */
+                assert(!result.isNull);
+
+                lineType = LineType.NORMAL;
+                text = result;
             }
+            break;
+        }
+        return tuple!("lineType", "text")(lineType, text);
+    }
+
+    Nullable!string get(int lineNumber)
+    {
+        Nullable!string result;
+
+        auto line = getLine(lineNumber, false /* forSavingToFile */);
+
+        final switch(line.lineType)
+        {
+        case LineType.NORMAL:
+            result = line.text;
+            break;
+        case LineType.UNRESOLVED_CONFLICT:
+            result = "<unresolved conflict>\n";
+            break;
+        case LineType.NO_SOURCE_LINE:
+            result = "<no source line>\n";
             break;
         }
         return result;
@@ -111,6 +156,26 @@ public:
     void connectLineChangeObserver(void delegate(LineNumberRange lines) d)
     {
         m_contentMapper.connectLineChangeObserver(d);
+    }
+
+    void save()
+    {
+        if(!m_contentMapper.allConflictsSolved())
+        {
+            throw new UserException("Cannot save merge result until all conflicts have been solved.");
+        }
+
+        auto f = File(m_outputFileName, "w"); // open for writing
+        for(int i = 0; i < getContentHeight(); i++)
+        {
+            auto line = getLine(i, true /* forSavingToFile */);
+            assert(line.lineType != LineType.UNRESOLVED_CONFLICT);
+            if(line.lineType != LineType.NO_SOURCE_LINE)
+            {
+                f.write(line.text);
+            }
+        }
+        log(format("Merge result saved to file %s", m_outputFileName));
     }
 }
 

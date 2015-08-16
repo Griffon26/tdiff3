@@ -89,6 +89,7 @@ extern (C) void sigwinch_handler(int signum)
 class Ui
 {
 private:
+    MergeResultContentProvider m_mergeResultContentProvider;
     InputPanes m_inputPanes;
     EditableContentPane m_editableContentPane;
     ContentEditor m_editor;
@@ -227,6 +228,8 @@ private:
 public:
     this(IFormattedContentProvider[3] cps, IContentProvider[3] lnps, MergeResultContentProvider mergeResultContentProvider, ContentMapper contentMapper)
     {
+        m_mergeResultContentProvider = mergeResultContentProvider;
+
         m_theme = new Theme();
 
         initscr();
@@ -327,6 +330,123 @@ public:
                 key.code.codepoint == codepoint);
     }
 
+    bool processKeypress(TermKeyKey key)
+    {
+        bool keyWasIgnored = false;
+
+        if(key.modifiers == 0)
+        {
+            if(key.type == TermKeyType.UNICODE)
+            {
+                switch(key.code.codepoint)
+                {
+                case 'j':
+                    m_inputPanes.scrollY(1);
+                    break;
+                case 'i':
+                    m_inputPanes.scrollY(-1);
+                    break;
+                case 'k':
+                    m_inputPanes.scrollX(-1);
+                    break;
+                case 'l':
+                    m_inputPanes.scrollX(1);
+                    break;
+                default:
+                    keyWasIgnored = true;
+                    break;
+                }
+            }
+            else if(key.type == TermKeyType.KEYSYM)
+            {
+                switch(key.code.sym)
+                {
+                case TermKeySym.UP:
+                    m_editor.move(ContentEditor.Movement.UP, false);
+                    break;
+                case TermKeySym.DOWN:
+                    m_editor.move(ContentEditor.Movement.DOWN, false);
+                    break;
+                case TermKeySym.LEFT:
+                    m_editor.move(ContentEditor.Movement.LEFT, false);
+                    break;
+                case TermKeySym.RIGHT:
+                    m_editor.move(ContentEditor.Movement.RIGHT, false);
+                    break;
+                case TermKeySym.HOME:
+                    m_editor.move(ContentEditor.Movement.LINEHOME, false);
+                    break;
+                case TermKeySym.END:
+                    m_editor.move(ContentEditor.Movement.LINEEND, false);
+                    break;
+                case TermKeySym.DELETE:
+                    m_editor.delete_();
+                    //updateScrollLimits();
+                    //drawMissingLines(m_scrollPositionY, 0, m_height);
+                    break;
+                default:
+                    keyWasIgnored = true;
+                    break;
+                }
+            }
+            else if(key.type == TermKeyType.FUNCTION)
+            {
+                switch(key.code.number)
+                {
+                case 2:
+                    m_mergeResultContentProvider.save();
+                    break;
+                default:
+                    keyWasIgnored = true;
+                    break;
+                }
+            }
+        }
+        else if(key.modifiers == TermKeyKeyMod.ALT)
+        {
+            if(key.type == TermKeyType.UNICODE)
+            {
+                switch(key.code.codepoint)
+                {
+                case '1':
+                    m_editor.toggleCurrentSectionSource(LineSource.A);
+                    break;
+                case '2':
+                    m_editor.toggleCurrentSectionSource(LineSource.B);
+                    break;
+                case '3':
+                    m_editor.toggleCurrentSectionSource(LineSource.C);
+                    break;
+                default:
+                    keyWasIgnored = true;
+                    break;
+                }
+            }
+            else if(key.type == TermKeyType.KEYSYM)
+            {
+                switch(key.code.sym)
+                {
+                case TermKeySym.UP:
+                    m_editor.selectPreviousConflict();
+                    break;
+                case TermKeySym.DOWN:
+                    m_editor.selectNextConflict();
+                    break;
+                case TermKeySym.PAGEUP:
+                    m_editor.selectPreviousUnsolvedConflict();
+                    break;
+                case TermKeySym.PAGEDOWN:
+                    m_editor.selectNextUnsolvedConflict();
+                    break;
+                default:
+                    keyWasIgnored = true;
+                    break;
+                }
+            }
+        }
+        return !keyWasIgnored;
+    }
+
     void mainLoop()
     {
         /* Refresh stdscr to make sure the static items are drawn and stdscr won't
@@ -360,106 +480,24 @@ public:
             }
             else
             {
-                char[50] buffer;
-                termkey_strfkey(tk, buffer.ptr, buffer.sizeof, &key, TermKeyFormat.VIM);
-                log(buffer.idup);
+                log(format("{ type : %s, { codepoint = %d, number = %d, sym = %s }, modifiers = %d }", (key.type == TermKeyType.UNICODE) ? "UNICODE" :
+                                                                                                       (key.type == TermKeyType.FUNCTION) ? "FUNCTION" :
+                                                                                                       (key.type == TermKeyType.KEYSYM) ? "KEYSYM" : "OTHER",
+                                                                                                       key.code.codepoint,
+                                                                                                       key.code.number,
+                                                                                                       (key.type == TermKeyType.KEYSYM) ? fromStringz(termkey_get_keyname(tk, key.code.sym)) : "undefined",
+                                                                                                       key.modifiers));
 
-                if(key.modifiers == 0)
+                try
                 {
-                    if(key.type == TermKeyType.UNICODE)
+                    if(!processKeypress(key))
                     {
-                        switch(key.code.codepoint)
-                        {
-                        case 'j':
-                            m_inputPanes.scrollY(1);
-                            break;
-                        case 'i':
-                            m_inputPanes.scrollY(-1);
-                            break;
-                        case 'k':
-                            m_inputPanes.scrollX(-1);
-                            break;
-                        case 'l':
-                            m_inputPanes.scrollX(1);
-                            break;
-                        case KEY_RESIZE:
-                            handleResize();
-                            break;
-                        case KEY_LEFT:
-                            m_editor.move(ContentEditor.Movement.LEFT, false);
-                            break;
-                        case KEY_RIGHT:
-                            m_editor.move(ContentEditor.Movement.RIGHT, false);
-                            break;
-                        case KEY_UP:
-                            m_editor.move(ContentEditor.Movement.UP, false);
-                            break;
-                        case KEY_DOWN:
-                            m_editor.move(ContentEditor.Movement.DOWN, false);
-                            break;
-                        case KEY_HOME:
-                            m_editor.move(ContentEditor.Movement.LINEHOME, false);
-                            break;
-                        case KEY_END:
-                            m_editor.move(ContentEditor.Movement.LINEEND, false);
-                            break;
-                        case KEY_DC:
-                            m_editor.delete_();
-                            //updateScrollLimits();
-                            //drawMissingLines(m_scrollPositionY, 0, m_height);
-                            break;
-                        default:
-                            continue;
-                        }
-                    }
-                    else if(key.type == TermKeyType.KEYSYM)
-                    {
-                        switch(key.code.sym)
-                        {
-                        case TermKeySym.UP:
-                            m_editor.move(ContentEditor.Movement.UP, false);
-                            break;
-                        case TermKeySym.DOWN:
-                            m_editor.move(ContentEditor.Movement.DOWN, false);
-                            break;
-                        default:
-                            continue;
-                        }
+                        continue;
                     }
                 }
-                else if(key.modifiers == TermKeyKeyMod.ALT)
+                catch(UserException e)
                 {
-                    if(key.type == TermKeyType.UNICODE)
-                    {
-                        switch(key.code.codepoint)
-                        {
-                        case '1':
-                            m_editor.toggleCurrentSectionSource(LineSource.A);
-                            break;
-                        case '2':
-                            m_editor.toggleCurrentSectionSource(LineSource.B);
-                            break;
-                        case '3':
-                            m_editor.toggleCurrentSectionSource(LineSource.C);
-                            break;
-                        default:
-                            continue;
-                        }
-                    }
-                    else if(key.type == TermKeyType.KEYSYM)
-                    {
-                        switch(key.code.sym)
-                        {
-                        case TermKeySym.UP:
-                            m_editor.selectPreviousConflict();
-                            break;
-                        case TermKeySym.DOWN:
-                            m_editor.selectNextConflict();
-                            break;
-                        default:
-                            continue;
-                        }
-                    }
+                    log(format("Showing to the user: '%s'", e.msg));
                 }
             }
 

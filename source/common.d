@@ -31,11 +31,20 @@ import std.c.stddef;
 import std.container;
 import std.stdio;
 import std.string;
+import std.typecons;
 import std.utf;
 
 import myassert;
 
 extern (C) int wcwidth(wchar_t c);
+
+class UserException: Exception
+{
+    @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    {
+        super(msg, file, line, next);
+    }
+}
 
 int customWcWidth(wchar_t c, bool acceptUnprintable)
 {
