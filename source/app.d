@@ -64,8 +64,12 @@ module app;
 import std.algorithm;
 import std.c.locale;
 import std.conv;
+import std.getopt;
 import std.math;
 import std.stdio;
+import std.string;
+
+import optparse;
 
 import common;
 import contentmapper;
@@ -79,19 +83,48 @@ import mergeresultcontentprovider;
 import simplefilelineprovider;
 import ui;
 
-void main()
+void main(string[] args)
 {
     setlocale(LC_ALL, "");
+
+    string[3] inputFileNames;
+    string outputFileName;
+
+    try
+    {
+        auto parser = new OptionParser("A text-based 3-way diff/merge tool that can handle large files.");
+        parser.argdesc = "[options] infile1 infile2 infile3 -o outfile";
+        parser.addOption("-o", "--output").help("The output file of the merge.");
+        parser.addOption(["-h", "--help"], Action.Help).help("Print this help message and exit.");
+
+        auto options = parser.parse(args);
+
+        if(options.args.length != 3 || options["output"] == "")
+        {
+            parser.error("Please specify 3 input files and an output file on the command line.");
+            /* parser.error will call exit() */
+        }
+
+        inputFileNames = options.args;
+        outputFileName = options["output"];
+    }
+    catch(OptionParsingError e)
+    {
+        stderr.writeln(e.msg);
+        return;
+    }
+
+    log(format("Input file 1: %s", inputFileNames[0]));
+    log(format("Input file 2: %s", inputFileNames[1]));
+    log(format("Input file 3: %s", inputFileNames[2]));
+    log(format("Output file : %s", outputFileName));
 
     const int count = 3;
 
     shared(SimpleFileLineProvider)[count] lps;
-    //lps[0] = new shared SimpleFileLineProvider("UTF-8-demo.txt");
-    //lps[1] = new shared SimpleFileLineProvider("UTF-8-demo2.txt");
-    //lps[2] = new shared SimpleFileLineProvider("test_short.txt");
-    lps[0] = new shared SimpleFileLineProvider("/home/griffon26/unison/projects/2014/tdiff3/small_base.txt");
-    lps[1] = new shared SimpleFileLineProvider("/home/griffon26/unison/projects/2014/tdiff3/small_contrib1.txt");
-    lps[2] = new shared SimpleFileLineProvider("/home/griffon26/unison/projects/2014/tdiff3/small_contrib2.txt");
+    lps[0] = new shared SimpleFileLineProvider(inputFileNames[0]);
+    lps[1] = new shared SimpleFileLineProvider(inputFileNames[1]);
+    lps[2] = new shared SimpleFileLineProvider(inputFileNames[2]);
 
     GnuDiff gnuDiff = new GnuDiff("/tmp");
     gnuDiff.setFile(0, lps[0]);
@@ -157,7 +190,7 @@ void main()
     contentMapper.determineMergeResultSections(d3la);
     contentMapper.automaticallyResolveConflicts(d3la);
 
-    auto mergeResultContentProvider = new MergeResultContentProvider(contentMapper, lps[0], lps[1], lps[2], "/home/griffon26/unison/projects/2014/tdiff3/merged.txt");
+    auto mergeResultContentProvider = new MergeResultContentProvider(contentMapper, lps[0], lps[1], lps[2], outputFileName);
 
     auto ui = new Ui(cps, lnps, mergeResultContentProvider, contentMapper);
     ui.handleResize();
