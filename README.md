@@ -7,6 +7,20 @@ The differences with kdiff3 (and possibly other diff/merge programs) are:
 * it runs in a terminal (no dependency on X or Qt)
 * it was designed to handle very large files efficiently, both in terms of speed as well as in the amount of memory it uses
 
+## Project status
+
+Tdiff3 is still at an early stage of development. This means that some shortcuts were taken to quickly get the application into a usable state. Some examples:
+* for now the input files are read entirely into memory when the application starts
+* no editing of the merge result is possible yet, only conflict resolution through selection
+
+This will be the focus of development in the coming period, along with important usability improvements.
+
+If you're interested in this program, either as a user or possibly even a developer I'd love to hear from you. You can find my email address on GitHub.
+
+## Screenshots
+
+![A screenshot of an xterm with tdiff3 running](/docs/images/screenshot1.png?raw=true)
+
 ## Compiling from source
 
 1. Install the [DMD compiler](http://dlang.org/dmd-linux.html)
