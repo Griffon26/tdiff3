@@ -223,6 +223,14 @@ public:
             case Movement.LINEEND:
                 newPos.character = m_mcp.get(m_currentPos.line).lengthInColumns(true) - 1;
                 break;
+            case Movement.FILEHOME:
+                newPos.character = 0;
+                newPos.line = 0;
+                break;
+            case Movement.FILEEND:
+                newPos.character = 0;
+                newPos.line = m_mcp.getContentHeight() - 1;
+                break;
             default:
                 assert(false);
         }

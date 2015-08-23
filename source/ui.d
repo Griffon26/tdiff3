@@ -444,6 +444,24 @@ public:
                 }
             }
         }
+        else if(key.modifiers == TermKeyKeyMod.CTRL)
+        {
+            if(key.type == TermKeyType.KEYSYM)
+            {
+                switch(key.code.sym)
+                {
+                case TermKeySym.HOME:
+                    m_editor.move(ContentEditor.Movement.FILEHOME, false);
+                    break;
+                case TermKeySym.END:
+                    m_editor.move(ContentEditor.Movement.FILEEND, false);
+                    break;
+                default:
+                    keyWasIgnored = true;
+                    break;
+                }
+            }
+        }
         return !keyWasIgnored;
     }
 

@@ -1,42 +1,21 @@
-Already implemented:
-- kdiff3's comparison algorithm
-- diff view of three files. The only thing you can do is scroll one line/column at a time.
-
-I plan to follow the following list from top to bottom for implementing new
-functionality. 
+An incomplete list of what is still to be done:
 
 - add to documentation that xterm users should set: XTerm*metaSendsEscape: true, otherwise alt-1 a.o. won't work
-- fix bug: d3ll should not have any completely empty entries at the end
 - implement ncurses ui
-  - graceful degradation of colors
-    rxvt-unicode: 88, changeable
-    xterm: 8                                  ****************** problem ********************
-    xterm-256color: 256, changeable
-    linux: 8, changeable
-    screen-256color within urxvt: 256 (screen converts 256 downto 88) ***** problem *****
-    screen-256color within xterm: 256 (screen converts 256 downto 8) ****** problem ***********
-    screen-256color within xterm-256color: 256
-    screen within xterm: 8 *** problem ***
-    screen within urxvt: 8 *** problem ***
-
     
   - also support just 2 files
   - add scrollbar (read-only, just to show where you are in the file)
   - create editable window (text only edited on screen, not backed by memory/file)
 
-    general:
-    - limit cursor movement to line content
+    movement keys:
+    - pageup/down
 
     supported keys:
-    - arrows for navigation
     - regular chars
     - delete, backspace
-    - home, end
-    - pageup/down
-    - ctrl-home/ctrl-end
+    - tab -> insert spaces upto tabstop
     - ctrl-c/ctrl-v -> copy/paste
     - ctrl-insert/shift-insert -> copy/paste
-    - tab -> insert spaces upto tabstop
 
     selection keys
     - shift-arrows -> char/line selection
@@ -52,14 +31,20 @@ functionality.
   - implement memory/file storage for editable window
     - only store edits wrt the original content
 
-- implement merging (without manual editing at first)
-    diff specific keys
-    - ctrl-up/down -> prev/next difference
-    - ctrl-pageup/down -> prev/next conflict
-    - ctrl-1/2/3 -> append/remove line from A/B/C at selected conflict position
-- implement manual editing of the merge result
+  - graceful degradation of colors
+    rxvt-unicode: 88, changeable
+    xterm: 8                                  ****************** problem ********************
+    xterm-256color: 256, changeable
+    linux: 8, changeable
+    screen-256color within urxvt: 256 (screen converts 256 downto 88) ***** problem *****
+    screen-256color within xterm: 256 (screen converts 256 downto 8) ****** problem ***********
+    screen-256color within xterm-256color: 256
+    screen within xterm: 8 *** problem ***
+    screen within urxvt: 8 *** problem ***
+
   - add configuration file and settings dialog
     - kdiff3's settings: tab inserts spaces, tab size, auto indentation
+
 - implement mmap for input file reading
 - implement decoding filter for non-utf8 input files
 
