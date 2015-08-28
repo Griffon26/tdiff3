@@ -29,6 +29,7 @@ import core.stdc.config;
 import core.stdc.errno;
 import core.sys.posix.sys.ioctl;
 import core.sys.posix.signal;
+import core.sys.posix.termios;
 import core.sys.posix.unistd;
 import deimos.ncurses.curses;
 import std.algorithm;
@@ -94,6 +95,7 @@ private:
     EditableContentPane m_editableContentPane;
     ContentEditor m_editor;
     Theme m_theme;
+    termios m_originalTermios;
 
     short colorcube(short colorcubesize, short r, short g, short b)
     {
@@ -231,6 +233,9 @@ public:
         m_mergeResultContentProvider = mergeResultContentProvider;
 
         m_theme = new Theme();
+
+        /* Save current terminal settings */
+        tcgetattr(0, &m_originalTermios);
 
         initscr();
         cbreak();
@@ -537,5 +542,8 @@ public:
 
         termkey_destroy(tk);
         endwin();
+
+        /* Restore terminal settings to original values */
+        tcsetattr(0, TCSANOW, &m_originalTermios);
     }
 }
