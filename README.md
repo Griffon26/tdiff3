@@ -56,3 +56,10 @@ This can be as simple as:
     4.  git clone https://github.com/Griffon26/tdiff3.git
         cd tdiff3 && dub
         ./tdiff3
+
+## Tips
+* run tdiff3 in an xterm (for now colors may be missing or keys not working in other terminals)
+* set TERM=xterm-256color (TERM=xterm only supports 16 colors, not enough to show the selection background color)
+* navigate between differences with alt-arrows/pageup/pagedown
+* perform conflict resolution with alt-1/2/3
+* save the merge result with F2 (only if all conflicts have been resolved)
