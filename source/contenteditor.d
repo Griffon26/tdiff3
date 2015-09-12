@@ -85,8 +85,6 @@ public:
         DOWN,
         LEFT,
         RIGHT,
-        PAGEUP,
-        PAGEDOWN,
         LINEHOME,
         LINEEND,
         FILEHOME,
@@ -191,48 +189,72 @@ public:
 
         switch(mv)
         {
-            case Movement.RIGHT:
-                if(m_currentPos.character < m_mcp.get(m_currentPos.line).lengthInColumns(true) - 1)
-                {
-                    newPos.character++;
-                }
-                break;
-            case Movement.LEFT:
-                if(m_currentPos.character > 0)
-                {
-                    newPos.character--;
-                }
-                break;
-            case Movement.UP:
-                if(m_currentPos.line > 0)
-                {
-                    newPos.line--;
-                    newPos.character = min(newPos.character, m_mcp.get(newPos.line).lengthInColumns(true) - 1);
-                }
-                break;
-            case Movement.DOWN:
-                if(m_currentPos.line < m_mcp.getContentHeight() - 1)
-                {
-                    newPos.line++;
-                    newPos.character = min(newPos.character, m_mcp.get(newPos.line).lengthInColumns(true) - 1);
-                }
-                break;
-            case Movement.LINEHOME:
-                newPos.character = 0;
-                break;
-            case Movement.LINEEND:
-                newPos.character = m_mcp.get(m_currentPos.line).lengthInColumns(true) - 1;
-                break;
-            case Movement.FILEHOME:
-                newPos.character = 0;
-                newPos.line = 0;
-                break;
-            case Movement.FILEEND:
-                newPos.character = 0;
-                newPos.line = m_mcp.getContentHeight() - 1;
-                break;
-            default:
-                assert(false);
+        case Movement.RIGHT:
+            if(m_currentPos.character < m_mcp.get(m_currentPos.line).lengthInColumns(true) - 1)
+            {
+                newPos.character++;
+            }
+            break;
+        case Movement.LEFT:
+            if(m_currentPos.character > 0)
+            {
+                newPos.character--;
+            }
+            break;
+        case Movement.UP:
+            if(m_currentPos.line > 0)
+            {
+                newPos.line--;
+                newPos.character = min(newPos.character, m_mcp.get(newPos.line).lengthInColumns(true) - 1);
+            }
+            break;
+        case Movement.DOWN:
+            if(m_currentPos.line < m_mcp.getContentHeight() - 1)
+            {
+                newPos.line++;
+                newPos.character = min(newPos.character, m_mcp.get(newPos.line).lengthInColumns(true) - 1);
+            }
+            break;
+        case Movement.LINEHOME:
+            newPos.character = 0;
+            break;
+        case Movement.LINEEND:
+            newPos.character = m_mcp.get(m_currentPos.line).lengthInColumns(true) - 1;
+            break;
+        case Movement.FILEHOME:
+            newPos.character = 0;
+            newPos.line = 0;
+            break;
+        case Movement.FILEEND:
+            newPos.character = 0;
+            newPos.line = m_mcp.getContentHeight() - 1;
+            break;
+        default:
+            assert(false);
+        }
+
+        moveTo(newPos, withSelection);
+
+        updateOutputFocusPosition(newPos);
+
+        return newPos != oldPos;
+    }
+
+    bool moveDistance(Movement mv, int distance, bool withSelection)
+    {
+        Position oldPos = m_currentPos;
+        Position newPos = m_currentPos;
+
+        switch(mv)
+        {
+        case Movement.UP:
+            newPos.line = max(0, m_currentPos.line - distance);
+            break;
+        case Movement.DOWN:
+            newPos.line = min(m_mcp.getContentHeight() - 1, m_currentPos.line + distance);
+            break;
+        default:
+            assert(false);
         }
 
         moveTo(newPos, withSelection);

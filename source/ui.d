@@ -384,6 +384,12 @@ public:
                 case TermKeySym.END:
                     m_editor.move(ContentEditor.Movement.LINEEND, false);
                     break;
+                case TermKeySym.PAGEUP:
+                    m_editor.moveDistance(ContentEditor.Movement.UP, m_editableContentPane.height, false);
+                    break;
+                case TermKeySym.PAGEDOWN:
+                    m_editor.moveDistance(ContentEditor.Movement.DOWN, m_editableContentPane.height, false);
+                    break;
                 case TermKeySym.DELETE:
                     m_editor.delete_();
                     //updateScrollLimits();

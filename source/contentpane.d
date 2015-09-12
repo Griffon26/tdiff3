@@ -67,6 +67,8 @@ public:
         cp.connectLineChangeObserver(&linesChanged);
     }
 
+    @property int height() { return m_height; }
+
     protected void updateScrollLimits()
     {
         m_maxScrollPositionX = m_cp.getContentWidth() - m_width;
