@@ -708,14 +708,14 @@ class OptionParser {
         */
         string opt, newopt, arg;
         dstring opt32;
-        long idx;
+        ptrdiff_t idx;
         Option match;
 
         foreach (o; this.options) {
             o.issue_default(options);
         }
 
-        for (ulong i=0; i<args.length; ++i) {
+        for (size_t i=0; i<args.length; ++i) {
             opt = args[i];
             // -- ends the option list, the remainder is dumped into args
             if (opt == "--") {
