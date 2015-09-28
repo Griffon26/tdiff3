@@ -25,6 +25,11 @@
  */
 module myassert;
 
+import std.algorithm;
+import std.conv;
+import std.range;
+import std.string;
+
 import dunit;
 
 void assertEqual(T, U)(T actual, U expected, lazy string msg = null,
@@ -34,3 +39,26 @@ void assertEqual(T, U)(T actual, U expected, lazy string msg = null,
     assertEquals(expected, actual, msg, file, line);
 }
 
+void assertArraysEqual(T, U)(T[] actual, U[] expected, lazy string msg = null,
+        string file = __FILE__,
+        size_t line = __LINE__)
+{
+    auto actualstring = actual.map!(el => "  " ~ to!string(el)).join("\n");
+    auto expectedstring = expected.map!(el => "  " ~ to!string(el)).join("\n");
+
+    if(actual.length != expected.length)
+    {
+        auto message = format("Arrays differ.\nexpected:\n%s\nbut was:\n%s\nArrays are not the same length", expectedstring, actualstring);
+        assertEquals(expected.length, actual.length, message, file, line);
+    }
+
+    foreach(i, act, exp; enumerate(zip(actual, expected)))
+    {
+        if(act != exp)
+        {
+            auto message = format("Arrays differ.\nexpected:\n%s\nbut was:\n%s\nMismatch starting at index %d", expectedstring, actualstring, i);
+            assertEquals(exp, act, message, file, line);
+            break;
+        }
+    }
+}

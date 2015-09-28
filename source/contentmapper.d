@@ -27,6 +27,7 @@ module contentmapper;
 
 import std.algorithm;
 import std.container;
+import std.range;
 import std.signals;
 import std.string;
 import std.typecons;
@@ -65,6 +66,12 @@ struct SectionInfo
     bool isConflict;
 }
 
+struct EditedLineSource
+{
+    int sectionIndex;
+    int modificationIndex;
+}
+
 struct LineInfo
 {
     LineState state;
@@ -89,6 +96,23 @@ private:
     LineSource[] m_selectedSources;
 
 public:
+    this(bool isConflict,
+         int firstInputLineA, int lastInputLineA,
+         int firstInputLineB, int lastInputLineB,
+         int firstInputLineC, int lastInputLineC,
+         int firstDiff3Line, int lastDiff3Line)
+    {
+        m_isConflict = isConflict;
+        m_inputLineNumbers[LineSource.A].firstLine = firstInputLineA;
+        m_inputLineNumbers[LineSource.B].firstLine = firstInputLineB;
+        m_inputLineNumbers[LineSource.C].firstLine = firstInputLineC;
+        m_inputLineNumbers[LineSource.A].lastLine = lastInputLineA;
+        m_inputLineNumbers[LineSource.B].lastLine = lastInputLineB;
+        m_inputLineNumbers[LineSource.C].lastLine = lastInputLineC;
+        m_diff3LineNumbers.firstLine = firstDiff3Line;
+        m_diff3LineNumbers.lastLine = lastDiff3Line;
+    }
+
     LineNumberRange getLineNumberRange(LineSource lineSource)
     {
         assert(lineSource != LineSource.UNDEFINED);
@@ -101,8 +125,6 @@ public:
 
         if(m_isConflict)
         {
-            // TODO: apply modifications
-
             if(m_selectedSources.length == 0)
             {
                 /* <unresolved conflict> */
@@ -149,7 +171,6 @@ public:
     {
         LineInfo lineInfo;
 
-        // TODO: apply modifications
         if(m_isConflict)
         {
             if(m_selectedSources.length == 0)
@@ -208,23 +229,489 @@ public:
         }
     }
 
-    /** Retrieve a line from this section. The first line of the section is line 0. */
-    string getEditedLine(int relativeLineNumber)
-    {
-        assert(m_isConflict);
-
-        /* TODO: implement */
-
-        return " *** edited *** ";
-    }
-
     bool isSolved()
     {
         return !m_isConflict || m_selectedSources.length != 0;
     }
 }
 
-alias Array!MergeResultSection MergeResultSections;
+enum RelativePosition
+{
+    BEFORE,
+    OVERLAPPING,
+    AFTER
+}
+
+pure int calculateOverlap(int firstLine1, int numberOfLines1, int firstLine2, int numberOfLines2)
+{
+    int beyondLastLine1 = firstLine1 + numberOfLines1;
+    int beyondLastLine2 = firstLine2 + numberOfLines2;
+
+    int overlap = min(beyondLastLine1, beyondLastLine2) - max(firstLine1, firstLine2);
+
+    return overlap;
+}
+
+unittest
+{
+    assertEqual(calculateOverlap(2, 2, 3, 2), 1);
+    assertEqual(calculateOverlap(3, 2, 2, 2), 1);
+    assertEqual(calculateOverlap(2, 3, 2, 2), 2);
+}
+
+struct Modification
+{
+    int firstLine;
+    int originalLineCount;
+    int editedLineCount;
+    string[] lines;
+
+    this(int firstLine, int originalLineCount, int editedLineCount, string[] lines)
+    {
+        this.firstLine = firstLine;
+        this.originalLineCount = originalLineCount;
+        this.editedLineCount = editedLineCount;
+        this.lines = lines;
+    }
+
+    unittest
+    {
+        auto mod = Modification(1, 2, 3, ["one", "two"]);
+
+        assertEqual(mod.firstLine, 1);
+        assertEqual(mod.originalLineCount, 2);
+        assertEqual(mod.editedLineCount, 3);
+        assertEqual(mod.lines[0], "one");
+        assertEqual(mod.lines[1], "two");
+    }
+
+    RelativePosition checkRelativePosition(Modification newModification)
+    {
+        if(firstLine + editedLineCount < newModification.firstLine)
+        {
+            return RelativePosition.BEFORE;
+        }
+        else if(newModification.firstLine + newModification.originalLineCount < firstLine)
+        {
+            return RelativePosition.AFTER;
+        }
+        else
+        {
+            return RelativePosition.OVERLAPPING;
+        }
+    }
+
+    Modification merge(Modification newModification)
+    {
+        Modification mergedModification;
+
+        auto overlapWithExistingEditedLines = calculateOverlap(newModification.firstLine, newModification.originalLineCount,
+                                                               firstLine, editedLineCount);
+
+        mergedModification.firstLine = min(firstLine, newModification.firstLine);
+        mergedModification.originalLineCount = originalLineCount +
+                                              newModification.originalLineCount -
+                                              overlapWithExistingEditedLines;
+        mergedModification.editedLineCount = editedLineCount +
+                                            newModification.editedLineCount -
+                                            overlapWithExistingEditedLines;
+
+        int linesBefore = 0;
+        int linesAfter = 0;
+
+        int remainingEditedLines = editedLineCount - overlapWithExistingEditedLines;
+
+        if(remainingEditedLines > 0)
+        {
+            if(firstLine < newModification.firstLine)
+            {
+                linesBefore = remainingEditedLines;
+            }
+            else if(firstLine + editedLineCount >
+                    newModification.firstLine + newModification.originalLineCount)
+            {
+                linesAfter = remainingEditedLines;
+            }
+            else
+            {
+                assert(false);
+            }
+        }
+
+        mergedModification.lines.length = linesBefore + newModification.lines.length + linesAfter;
+        mergedModification.lines[0..linesBefore] = lines[0..linesBefore];
+        mergedModification.lines[linesBefore..(linesBefore + newModification.lines.length)] = newModification.lines;
+        mergedModification.lines[linesBefore + newModification.lines.length..$] = lines[$ - linesAfter..$];
+
+        return mergedModification;
+    }
+
+    unittest
+    {
+        /* Check merge of modification that overlaps with end of existing modification */
+
+        // 1  1       1
+        // 2  a1      a1
+        // 3  a2  b1  b1
+        // 4  3   b2  b2
+        // 5  4   b3  b3
+        // 6  5       4
+        auto mod = Modification(2, 1, 2, ["a1", "a2"]).merge(Modification(3, 2, 3, ["b1", "b2", "b3"]));
+        assertEqual(mod, Modification(2, 2, 4, ["a1", "b1", "b2", "b3"]));
+    }
+
+    unittest
+    {
+        /* Check merge of modification that overlaps with all of existing modification */
+
+        // 1  1       1
+        // 2  a1  b1  b1
+        // 3  a2  b2  b2
+        // 4  3   b3  b3
+        // 5  4       3
+        auto mod = Modification(2, 1, 2, ["a1", "a2"]).merge(Modification(2, 2, 3, ["b1", "b2", "b3"]));
+        assertEqual(mod, Modification(2, 1, 3, ["b1", "b2", "b3"]));
+    }
+
+    unittest
+    {
+        /* Check merge of modification that overlaps with beginning of existing modification */
+
+        // 1  1       1
+        // 2  a1  b1  b1
+        // 3  a2  b2  b2
+        // 4  a3      a2
+        // 5  3       a3
+        // 6  4       3
+        auto mod = Modification(2, 1, 3, ["a1", "a2", "a3"]).merge(Modification(2, 1, 2, ["b1", "b2"]));
+        assertEqual(mod, Modification(2, 1, 4, ["b1", "b2", "a2", "a3"]));
+    }
+
+    unittest
+    {
+        /* Check merge of modification that starts before and overlaps with beginning of existing modification */
+
+        // 1  1       1
+        // 2  2   b1  b1
+        // 3  a1  b2  b2
+        // 4  a2  b3  b3
+        // 5  4       a2
+        // 6  5       4
+        auto mod = Modification(3, 1, 2, ["a1", "a2"]).merge(Modification(2, 2, 3, ["b1", "b2", "b3"]));
+        assertEqual(mod, Modification(2, 2, 4, ["b1", "b2", "b3", "a2"]));
+    }
+}
+
+class ModifiableMergeResultSection: MergeResultSection
+{
+private:
+    DList!Modification m_modifications;
+
+public:
+    this(bool isConflict,
+         int firstInputLineA, int lastInputLineA,
+         int firstInputLineB, int lastInputLineB,
+         int firstInputLineC, int lastInputLineC,
+         int firstDiff3Line, int lastDiff3Line)
+    {
+        super(isConflict,
+              firstInputLineA, lastInputLineA,
+              firstInputLineB, lastInputLineB,
+              firstInputLineC, lastInputLineC,
+              firstDiff3Line, lastDiff3Line);
+    }
+
+    override int getOutputSize()
+    {
+        auto numberOfLines = super.getOutputSize();
+        foreach(modification; m_modifications)
+        {
+            numberOfLines -= modification.originalLineCount;
+            numberOfLines += modification.editedLineCount;
+        }
+
+        /* If the edit has removed all lines, then this section will consist of
+         * a single "no source line" line */
+        if(numberOfLines == 0)
+        {
+            numberOfLines = 1;
+        }
+        return numberOfLines;
+    }
+
+    override void toggle(LineSource lineSource)
+    {
+        // throw away all modifications
+        super.toggle(lineSource);
+    }
+
+    override LineInfo getLineInfo(int relativeLineNumber)
+    {
+        auto originalRelativeLineNumber = relativeLineNumber;
+
+        foreach(modification; m_modifications)
+        {
+            if(relativeLineNumber >= modification.firstLine)
+            {
+                if(relativeLineNumber < modification.firstLine + modification.editedLineCount)
+                {
+                    LineInfo lineInfo;
+                    lineInfo.state = LineState.EDITED;
+                    lineInfo.lineNumber = relativeLineNumber;
+                    return lineInfo;
+                }
+                else
+                {
+                    relativeLineNumber -= modification.editedLineCount;
+                    relativeLineNumber += modification.originalLineCount;
+                }
+            }
+            else
+            {
+                return super.getLineInfo(relativeLineNumber);
+            }
+        }
+
+        auto numberOfLines = super.getOutputSize();
+        if(relativeLineNumber >= numberOfLines)
+        {
+            /* This should only happen in case the section is completely empty
+             * and the "no source line" line is being retrieved */
+            assert(originalRelativeLineNumber == 0);
+
+            LineInfo lineInfo;
+            lineInfo.state = LineState.EDITED;
+            lineInfo.lineNumber = -1;
+            return lineInfo;
+        }
+        else
+        {
+            return super.getLineInfo(relativeLineNumber);
+        }
+    }
+
+    override bool isSolved()
+    {
+        // if edited then solved, otherwise...
+        return super.isSolved();
+    }
+
+    void applyModification(Modification newmod)
+    {
+        DList!Modification updatedModifications;
+
+        assert(newmod.firstLine + newmod.originalLineCount <= getOutputSize());
+
+        bool newmodInserted = false;
+        auto modRange = m_modifications[];
+        while(!modRange.empty)
+        {
+            switch(modRange.front.checkRelativePosition(newmod))
+            {
+            case RelativePosition.BEFORE:
+                updatedModifications.insertBack(modRange.front);
+                newmod.firstLine -= modRange.front.editedLineCount;
+                newmod.firstLine += modRange.front.originalLineCount;
+                break;
+            case RelativePosition.OVERLAPPING:
+                newmod = modRange.front.merge(newmod);
+                break;
+            case RelativePosition.AFTER:
+                if(!newmodInserted)
+                {
+                    updatedModifications.insertBack(newmod);
+                    newmodInserted = true;
+                }
+                updatedModifications.insertBack(modRange.front);
+                break;
+            default:
+                assert(false);
+            }
+            modRange.popFront();
+        }
+
+        if(!newmodInserted)
+        {
+            updatedModifications.insertBack(newmod);
+            newmodInserted = true;
+        }
+
+        m_modifications = updatedModifications;
+    }
+
+    /** Retrieve a line from this section. The first line of the section is line 0. */
+    string getEditedLine(int relativeLineNumber)
+    {
+        foreach(modification; m_modifications)
+        {
+            if(relativeLineNumber >= modification.firstLine)
+            {
+                if(relativeLineNumber < modification.firstLine + modification.editedLineCount)
+                {
+                    return modification.lines[relativeLineNumber - modification.firstLine];
+                }
+                else
+                {
+                    relativeLineNumber -= modification.editedLineCount;
+                    relativeLineNumber += modification.originalLineCount;
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+        /* this function should never be called for a line that is not an edited one */
+        assert(false);
+    }
+}
+
+version(unittest)
+{
+    private Tuple!(LineState, int)[] toLineInfos(MergeResultSection section)
+    {
+        return iota(0, section.getOutputSize())
+                    .map!(i => section.getLineInfo(i))
+                    .map!(li => tuple(li.state, li.lineNumber)).array;
+    }
+}
+
+unittest
+{
+    /* Check that a clean section contains all original lines */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 12,
+                                                                            10, 12,
+                                                                            10, 12,
+                                                                            20, 22);
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.ORIGINAL, 11),
+                                               tuple(LineState.ORIGINAL, 12) ]);
+}
+
+unittest
+{
+    /* Check the effect of a modification applied to the center line */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 12,
+                                                                            10, 12,
+                                                                            10, 12,
+                                                                            20, 22);
+    section.applyModification(Modification(1, 1, 1, [ "edit1" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.ORIGINAL, 12) ]);
+    assertEqual(section.getEditedLine(1), "edit1");
+}
+
+unittest
+{
+    /* Check if a modification can increase the number of lines in a section */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 12,
+                                                                            10, 12,
+                                                                            10, 12,
+                                                                            20, 22);
+    section.applyModification(Modification(1, 1, 2, [ "edit1", "edit2" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.EDITED,    2),
+                                               tuple(LineState.ORIGINAL, 12) ]);
+    assertEqual(section.getEditedLine(1), "edit1");
+    assertEqual(section.getEditedLine(2), "edit2");
+}
+
+unittest
+{
+    /* Check if a modification can decrease the number of lines in a section */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            20, 23);
+    section.applyModification(Modification(1, 2, 1, [ "edit1" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.ORIGINAL, 13) ]);
+    assertEqual(section.getEditedLine(1), "edit1");
+}
+
+unittest
+{
+    /* Check if a modification can remove lines without replacing them with edited lines */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            20, 23);
+    section.applyModification(Modification(1, 2, 0, []));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.ORIGINAL, 13) ]);
+}
+
+unittest
+{
+    /* Check if a modification can be applied to text *before* an existing modification */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            20, 23);
+    section.applyModification(Modification(3, 1, 1, [ "edit1" ]));
+    section.applyModification(Modification(1, 1, 1, [ "edit2" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.ORIGINAL, 12),
+                                               tuple(LineState.EDITED,    3) ]);
+    assertEqual(section.getEditedLine(1), "edit2");
+    assertEqual(section.getEditedLine(3), "edit1");
+}
+
+unittest
+{
+    /* Check if a modification can be applied to text *after* an existing modification */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            20, 23);
+    section.applyModification(Modification(1, 1, 1, [ "edit1" ]));
+    section.applyModification(Modification(3, 1, 1, [ "edit2" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.ORIGINAL, 12),
+                                               tuple(LineState.EDITED,    3) ]);
+    assertEqual(section.getEditedLine(1), "edit1");
+    assertEqual(section.getEditedLine(3), "edit2");
+}
+
+unittest
+{
+    /* Check if a modification can be applied to text *overlapping* an existing modification */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            20, 23);
+    section.applyModification(Modification(1, 2, 2, [ "edit1a", "edit1b" ]));
+    section.applyModification(Modification(2, 2, 2, [ "edit2a", "edit2b" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.EDITED,    2),
+                                               tuple(LineState.EDITED,    3) ]);
+    assertEqual(section.getEditedLine(1), "edit1a");
+    assertEqual(section.getEditedLine(2), "edit2a");
+    assertEqual(section.getEditedLine(3), "edit2b");
+}
+
+alias Array!ModifiableMergeResultSection MergeResultSections;
 
 version(unittest)
 {
@@ -274,13 +761,13 @@ public:
 
     private static MergeResultSections calculateMergeResultSections(Diff3LineArray d3la)
     {
-        DList!MergeResultSection mergeResultSections = make!(DList!MergeResultSection);
+        DList!ModifiableMergeResultSection mergeResultSections = make!(DList!ModifiableMergeResultSection);
 
         int prev_equality = -1;
         int lastNonEmptyLineA;
         int lastNonEmptyLineB;
         int lastNonEmptyLineC;
-        MergeResultSection section;
+        ModifiableMergeResultSection section;
         int d3l_index = 0;
         foreach(d3l; d3la)
         {
@@ -300,16 +787,11 @@ public:
 
                     mergeResultSections.insertBack(section);
                 }
-                section = new MergeResultSection();
-                section.m_isConflict = (equality != 7);
-                section.m_inputLineNumbers[LineSource.A].firstLine = d3l.lineA;
-                section.m_inputLineNumbers[LineSource.B].firstLine = d3l.lineB;
-                section.m_inputLineNumbers[LineSource.C].firstLine = d3l.lineC;
-                section.m_inputLineNumbers[LineSource.A].lastLine = d3l.lineA;
-                section.m_inputLineNumbers[LineSource.B].lastLine = d3l.lineB;
-                section.m_inputLineNumbers[LineSource.C].lastLine = d3l.lineC;
-                section.m_diff3LineNumbers.firstLine = d3l_index;
-                section.m_diff3LineNumbers.lastLine = d3l_index;
+                section = new ModifiableMergeResultSection(equality != 7,
+                                                           d3l.lineA, d3l.lineA,
+                                                           d3l.lineB, d3l.lineB,
+                                                           d3l.lineC, d3l.lineC,
+                                                           d3l_index, d3l_index);
             }
             else
             {
@@ -499,6 +981,174 @@ public:
         assert(false);
     }
 
+    void applyModification(Modification mod)
+    {
+        LineNumberRange modifiedRange;
+        modifiedRange.firstLine = mod.firstLine;
+        modifiedRange.lastLine = -1;
+
+        foreach(section; m_mergeResultSections)
+        {
+            int sectionSize = section.getOutputSize();
+            if(mod.firstLine < sectionSize)
+            {
+                auto linesInFollowingSections = (mod.firstLine + mod.originalLineCount) - sectionSize;
+
+                if(linesInFollowingSections > 0)
+                {
+                    mod.originalLineCount -= linesInFollowingSections;
+                }
+
+                section.applyModification(mod);
+
+                if(linesInFollowingSections <= 0)
+                {
+                    break;
+                }
+
+                mod = Modification(0, linesInFollowingSections, 0, []);
+            }
+            else
+            {
+                mod.firstLine -= sectionSize;
+            }
+        }
+
+        m_linesChanged.emit(modifiedRange);
+    }
+
+    version(unittest)
+    {
+        private string[] toLines()
+        {
+            return iota(0, getContentHeight())
+                        .map!(i => getMergeResultLineInfo(i))
+                        .map!( (LineInfo li)
+                                {
+                                    if(li.state == LineState.ORIGINAL)
+                                    {
+                                        return format("original %d", li.lineNumber);
+                                    }
+                                    else if(li.state == LineState.EDITED)
+                                    {
+                                        if(li.lineNumber == -1)
+                                        {
+                                            return "no source line";
+                                        }
+                                        else
+                                        {
+                                            return getEditedLine(li.sectionIndex, li.lineNumber);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        assert(false);
+                                    }
+                                } ).array;
+        }
+    }
+
+    unittest
+    {
+        /* Simple test to show that this kind of test works */
+        auto cm = new ContentMapper();
+        cm.m_mergeResultSections = MergeResultSections([ new ModifiableMergeResultSection(false,
+                                                                                          10, 11,
+                                                                                          10, 11,
+                                                                                          10, 11,
+                                                                                          20, 21) ]);
+        assertArraysEqual(cm.toLines(), [ "original 10",
+                                          "original 11" ]);
+    }
+
+    unittest
+    {
+        /* Test a single modification within a section */
+        auto cm = new ContentMapper();
+        cm.m_mergeResultSections = MergeResultSections([ new ModifiableMergeResultSection(false,
+                                                                                          10, 13,
+                                                                                          10, 13,
+                                                                                          10, 13,
+                                                                                          20, 23) ]);
+        cm.applyModification(Modification(1, 2, 1, [ "edited 1" ]));
+        assertArraysEqual(cm.toLines(), [ "original 10",
+                                          "edited 1",
+                                          "original 13" ]);
+    }
+
+    unittest
+    {
+        /* Test a single modification spanning two sections */
+        auto cm = new ContentMapper();
+        cm.m_mergeResultSections = MergeResultSections([ new ModifiableMergeResultSection(false,
+                                                                                          10, 11,
+                                                                                          10, 11,
+                                                                                          10, 11,
+                                                                                          20, 21),
+                                                         new ModifiableMergeResultSection(false,
+                                                                                          12, 13,
+                                                                                          12, 13,
+                                                                                          12, 13,
+                                                                                          22, 23)]);
+        cm.applyModification(Modification(1, 2, 2, [ "edited 1", "edited 2" ]));
+        assertArraysEqual(cm.toLines(), [ "original 10",
+                                          "edited 1",
+                                          "edited 2",
+                                          "original 13" ]);
+
+        // Check that the edited lines are added to the first section
+        assertEqual(cm.m_mergeResultSections[0].getOutputSize(), 3);
+        assertEqual(cm.m_mergeResultSections[1].getOutputSize(), 1);
+    }
+
+    unittest
+    {
+        /* Test a single modification spanning three sections */
+        auto cm = new ContentMapper();
+        cm.m_mergeResultSections = MergeResultSections([ new ModifiableMergeResultSection(false,
+                                                                                          10, 11,
+                                                                                          10, 11,
+                                                                                          10, 11,
+                                                                                          20, 21),
+                                                         new ModifiableMergeResultSection(false,
+                                                                                          12, 13,
+                                                                                          12, 13,
+                                                                                          12, 13,
+                                                                                          22, 23),
+                                                         new ModifiableMergeResultSection(false,
+                                                                                          14, 15,
+                                                                                          14, 15,
+                                                                                          14, 15,
+                                                                                          24, 25)]);
+        cm.applyModification(Modification(1, 4, 4, [ "edited 1", "edited 2", "edited 3", "edited 4" ]));
+        assertArraysEqual(cm.toLines(), [ "original 10",
+                                          "edited 1",
+                                          "edited 2",
+                                          "edited 3",
+                                          "edited 4",
+                                          "no source line",
+                                          "original 15" ]);
+
+        // Check that the edited lines are added to the first section
+        assertEqual(cm.m_mergeResultSections[0].getOutputSize(), 5);
+        // Check that the middle section without lines, still has one "no source line" line
+        assertEqual(cm.m_mergeResultSections[1].getOutputSize(), 1);
+        assertEqual(cm.m_mergeResultSections[2].getOutputSize(), 1);
+    }
+
+    unittest
+    {
+        /* Test that a modification can delete a complete section */
+        auto cm = new ContentMapper();
+        cm.m_mergeResultSections = MergeResultSections([ new ModifiableMergeResultSection(false,
+                                                                                          10, 11,
+                                                                                          10, 11,
+                                                                                          10, 11,
+                                                                                          20, 21) ]);
+        cm.applyModification(Modification(0, 2, 0, []));
+        assertArraysEqual(cm.toLines(), [ "no source line" ]);
+    }
+
     ulong getNumberOfSections()
     {
         return m_mergeResultSections.length;
@@ -578,7 +1228,6 @@ public:
 
     bool allConflictsSolved()
     {
-        /* TODO: implement */
         return all!((MergeResultSection s) { return s.isSolved(); } ) (m_mergeResultSections[]);
     }
 
@@ -598,8 +1247,7 @@ public:
 
     string getEditedLine(int sectionIndex, int lineNumber)
     {
-        // TODO: implement
-        return "";
+        return m_mergeResultSections[sectionIndex].getEditedLine(lineNumber);
     }
 
     int getContentHeight()
@@ -620,4 +1268,151 @@ public:
     }
 }
 
+/+
+unittest
+{
+    /* Check if the original lines are returned if there are no modifications */
+    auto mcp = new ModifiedContentProvider(lp);
 
+    assertEqual(mcp.get(0), "line 0\n");
+    assertEqual(mcp.get(10), "line 10\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1);
+}
+
+unittest
+{
+    /* Test with one modification that inserts more lines than it replaces */
+    auto mcp = new ModifiedContentProvider(lp);
+
+    mcp.applyModification(Modification(3, 1, 2, ["editedline 1\n", "editedline 2\n"]));
+    assertEqual(mcp.get(2), "line 2\n");
+    assertEqual(mcp.get(3), "editedline 1\n");
+    assertEqual(mcp.get(4), "editedline 2\n");
+    assertEqual(mcp.get(5), "line 4\n");
+    assertEqual(mcp.get(6), "line 5\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 1);
+}
+
+unittest
+{
+    /* Test adding one modification that inserts fewer lines than it replaces */
+    auto mcp = new ModifiedContentProvider(lp);
+
+    mcp.applyModification(Modification(3, 2, 1, ["editedline 1\n"]));
+    assertEqual(mcp.get(2), "line 2\n");
+    assertEqual(mcp.get(3), "editedline 1\n");
+    assertEqual(mcp.get(4), "line 5\n");
+    assertEqual(mcp.get(5), "line 6\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 1);
+}
+
+unittest
+{
+    /* Test adding a second modification that does not overlap after the first one */
+    auto mcp = new ModifiedContentProvider(lp);
+
+    mcp.applyModification(Modification(3, 1, 2, ["editedline a1\n", "editedline a2\n"]));
+    mcp.applyModification(Modification(6, 1, 2, ["editedline b1\n", "editedline b2\n"]));
+
+    assertEqual(mcp.get(2), "line 2\n");
+    assertEqual(mcp.get(3), "editedline a1\n");
+    assertEqual(mcp.get(4), "editedline a2\n");
+    assertEqual(mcp.get(5), "line 4\n");
+    assertEqual(mcp.get(6), "editedline b1\n");
+    assertEqual(mcp.get(7), "editedline b2\n");
+    assertEqual(mcp.get(8), "line 6\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 2);
+}
+
+unittest
+{
+    /* Test adding a third modification that does not overlap between the first and second one */
+    auto mcp = new ModifiedContentProvider(lp);
+
+    mcp.applyModification(Modification(2, 1, 2, ["editedline a1\n", "editedline a2\n"]));
+    mcp.applyModification(Modification(7, 1, 2, ["editedline b1\n", "editedline b2\n"]));
+    mcp.applyModification(Modification(5, 1, 2, ["editedline c1\n", "editedline c2\n"]));
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "editedline a1\n");
+    assertEqual(mcp.get(3), "editedline a2\n");
+    assertEqual(mcp.get(4), "line 3\n");
+    assertEqual(mcp.get(5), "editedline c1\n");
+    assertEqual(mcp.get(6), "editedline c2\n");
+    assertEqual(mcp.get(7), "line 5\n");
+    assertEqual(mcp.get(8), "editedline b1\n");
+    assertEqual(mcp.get(9), "editedline b2\n");
+    assertEqual(mcp.get(10), "line 7\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 3);
+}
+
+unittest
+{
+    /* Test adding a second modification that overlaps with the end of the first one */
+    auto mcp = new ModifiedContentProvider(lp);
+
+    mcp.applyModification(Modification(3, 1, 2, ["editedline a1\n", "editedline a2\n"]));
+    mcp.applyModification(Modification(4, 1, 2, ["editedline b1\n", "editedline b2\n"]));
+
+    assertEqual(mcp.get(2), "line 2\n");
+    assertEqual(mcp.get(3), "editedline a1\n");
+    assertEqual(mcp.get(4), "editedline b1\n");
+    assertEqual(mcp.get(5), "editedline b2\n");
+    assertEqual(mcp.get(6), "line 4\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 2);
+}
+
+unittest
+{
+    /* Test adding a second modification that overlaps with the beginning of the first one */
+    auto mcp = new ModifiedContentProvider(lp);
+
+    mcp.applyModification(Modification(3, 1, 2, ["editedline a1\n", "editedline a2\n"]));
+    mcp.applyModification(Modification(2, 2, 2, ["editedline b1\n", "editedline b2\n"]));
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "editedline b1\n");
+    assertEqual(mcp.get(3), "editedline b2\n");
+    assertEqual(mcp.get(4), "editedline a2\n");
+    assertEqual(mcp.get(5), "line 4\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 1);
+}
+
+unittest
+{
+    /* Test adding a second modification that overlaps with the middle of the first one */
+    auto mcp = new ModifiedContentProvider(lp);
+
+    mcp.applyModification(Modification(3, 1, 2, ["editedline a1\n", "editedline a2\n"]));
+    mcp.applyModification(Modification(2, 4, 4, ["editedline b1\n", "editedline b2\n", "editedline b3\n", "editedline b4\n"]));
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "editedline b1\n");
+    assertEqual(mcp.get(3), "editedline b2\n");
+    assertEqual(mcp.get(4), "editedline b3\n");
+    assertEqual(mcp.get(5), "editedline b4\n");
+    assertEqual(mcp.get(6), "line 5\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 1);
+}
+
+unittest
+{
+    /* Test adding a third modification that overlaps with the first and second modification */
+    auto mcp = new ModifiedContentProvider(lp);
+
+    mcp.applyModification(Modification(2, 1, 2, ["editedline a1\n", "editedline a2\n"]));
+    mcp.applyModification(Modification(5, 1, 2, ["editedline b1\n", "editedline b2\n"]));
+    mcp.applyModification(Modification(3, 3, 4, ["editedline c1\n", "editedline c2\n", "editedline c3\n", "editedline c4\n"]));
+
+    assertEqual(mcp.get(1), "line 1\n");
+    assertEqual(mcp.get(2), "editedline a1\n");
+    assertEqual(mcp.get(3), "editedline c1\n");
+    assertEqual(mcp.get(4), "editedline c2\n");
+    assertEqual(mcp.get(5), "editedline c3\n");
+    assertEqual(mcp.get(6), "editedline c4\n");
+    assertEqual(mcp.get(7), "editedline b2\n");
+    assertEqual(mcp.get(8), "line 5\n");
+    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 3);
+}
+
++/

@@ -86,9 +86,15 @@ public:
         final switch(lineInfo.state)
         {
         case LineState.EDITED:
-            text = m_contentMapper.getEditedLine(lineInfo.sectionIndex, lineInfo.lineNumber);
-            lineType = LineType.NORMAL;
-
+            if(lineInfo.lineNumber == -1)
+            {
+                lineType = LineType.NO_SOURCE_LINE;
+            }
+            else
+            {
+                text = m_contentMapper.getEditedLine(lineInfo.sectionIndex, lineInfo.lineNumber);
+                lineType = LineType.NORMAL;
+            }
             break;
         case LineState.NONE:
             assert(!forSavingToFile);

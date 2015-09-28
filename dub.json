@@ -8,5 +8,6 @@
 		"d-unit": ">=0.7.1",
 		"ncurses": "~master"
 	},
-	"libs": ["termkey"]
+	"libs": ["termkey"],
+	"buildRequirements": [ "allowWarnings" ]
 }

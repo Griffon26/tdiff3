@@ -313,7 +313,6 @@ public:
 
     void delete_()
     {
-        /+
         if(m_selectionActive)
         {
             auto firstPos = min(m_selectionBegin, m_currentPos);
@@ -357,7 +356,7 @@ public:
                 mod.editedLineCount = 1;
             }
 
-            //TODO: m_mcp.applyModification(mod);
+            m_contentMapper.applyModification(mod);
         }
         else
         {
@@ -378,20 +377,17 @@ public:
             {
                 mod.lines = [ originalLine.substringColumns(0, m_currentPos.character, true) ~ originalLine.substringColumns(m_currentPos.character + 1, originalLineColumns, true) ];
             }
-            // TODO: m_mcp.applyModification(mod);
+            m_contentMapper.applyModification(mod);
         }
-        +/
     }
     void insertText(string fragment)
     {
-        /+
         auto mod = Modification();
         mod.firstLine = m_currentPos.line;
         mod.originalLineCount = 1;
         mod.editedLineCount = 1;
         mod.lines = [fragment];
-        // TODO: m_mcp.applyModification(mod);
-        +/
+        m_contentMapper.applyModification(mod);
     }
     void cut()
     {
