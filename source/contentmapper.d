@@ -273,9 +273,20 @@ unittest
 struct Modification
 {
     /**
-     * The first line of the modification relative to the start of the
-     * ModifiableMergeResultSection it is applied to. This is the line number
-     * in the possibly already modified section content. */
+     * The first line of the modification relative to the start of the content
+     * of the ModifiableMergeResultSection it is applied to.
+     *
+     * In a modification passed to
+     * ModifiableMergeResultSection.applyModification this is the line number
+     * in the current (possibly already edited) content of the section.
+     *
+     * Once stored in a section, firstLine will have been modified to be
+     * relative to the original content of the section without modifications.
+     *
+     * Always keeping firstLine relative to the original content makes it
+     * possible to insert additional modifications before existing ones without
+     * having to adapt firstLine in the existing modifications.
+     */
     int firstLine;
     /**
      * The number of lines in the section that will be replaced by new lines in
@@ -487,6 +498,16 @@ public:
         super.toggle(lineSource);
     }
 
+    /**
+     * Return where the content of a line can be found.
+     *
+     * Edited lines can be retrieved with a call to getEditedLine, passing the
+     * lineNumber from the LineInfo returned by this function.
+     *
+     * Params:
+     *   relativeLineNumber = the line number relative to the current
+     *                        (possibly edited) content of the section
+     */
     override LineInfo getLineInfo(int relativeLineNumber)
     {
         auto originalRelativeLineNumber = relativeLineNumber;
@@ -499,7 +520,7 @@ public:
                 {
                     LineInfo lineInfo;
                     lineInfo.state = LineState.EDITED;
-                    lineInfo.lineNumber = relativeLineNumber;
+                    lineInfo.lineNumber = originalRelativeLineNumber;
                     return lineInfo;
                 }
                 else
@@ -538,6 +559,18 @@ public:
         return super.isSolved();
     }
 
+    /**
+     * This function applies a modification to a section.
+     *
+     * Because the firstLine member of existing modifications 
+     * always refers to the line number in the original unmodified
+     * content of the section (see Modification.firstLine), there is no need to modify existing
+     * modifications upon insertion of another one before them.
+     *
+     * However, the firstLine member of the modification being added is
+     * relative to the start of the current (possibly modified) content of the
+     * section. It will therefore have to be modified once before it is stored.
+     */
     void applyModification(Modification newmod)
     {
         DList!Modification updatedModifications;
@@ -697,7 +730,7 @@ unittest
 
 unittest
 {
-    /* Check if a modification can be applied to text *before* an existing modification */
+    /* Check if a modification can be applied before an existing modification */
     ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
                                                                             10, 13,
                                                                             10, 13,
@@ -716,7 +749,7 @@ unittest
 
 unittest
 {
-    /* Check if a modification can be applied to text *after* an existing modification */
+    /* Check if a modification can be applied after an existing modification */
     ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
                                                                             10, 13,
                                                                             10, 13,
@@ -735,7 +768,29 @@ unittest
 
 unittest
 {
-    /* Check if a modification can be applied to text *overlapping* an existing modification */
+    /* Check if a modification can be applied before an existing modification and changing the offset of the existing modification */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 14,
+                                                                            10, 14,
+                                                                            10, 14,
+                                                                            20, 24);
+    section.applyModification(Modification(3, 1, 1, [ "edit1" ]));
+    section.applyModification(Modification(1, 1, 2, [ "edit2a", "edit2b" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.EDITED,    2),
+                                               tuple(LineState.ORIGINAL, 12),
+                                               tuple(LineState.EDITED,    4),
+                                               tuple(LineState.ORIGINAL, 14) ]);
+    assertEqual(section.getEditedLine(1), "edit2a");
+    assertEqual(section.getEditedLine(2), "edit2b");
+    assertEqual(section.getEditedLine(4), "edit1");
+}
+
+unittest
+{
+    /* Check if a modification can be applied that overlaps the end of an existing modification */
     ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
                                                                             10, 13,
                                                                             10, 13,
@@ -751,6 +806,48 @@ unittest
     assertEqual(section.getEditedLine(1), "edit1a");
     assertEqual(section.getEditedLine(2), "edit2a");
     assertEqual(section.getEditedLine(3), "edit2b");
+}
+
+unittest
+{
+    /* Check if a modification can be applied that overlaps the beginning of an existing modification */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            20, 23);
+    section.applyModification(Modification(2, 2, 2, [ "edit1a", "edit1b" ]));
+    section.applyModification(Modification(1, 2, 2, [ "edit2a", "edit2b" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.EDITED,    2),
+                                               tuple(LineState.EDITED,    3) ]);
+    assertEqual(section.getEditedLine(1), "edit2a");
+    assertEqual(section.getEditedLine(2), "edit2b");
+    assertEqual(section.getEditedLine(3), "edit1b");
+}
+
+unittest
+{
+    /* Check if a modification can be applied that overlaps the beginning of an existing modification and changes the offset of the existing modification */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            10, 13,
+                                                                            20, 23);
+    section.applyModification(Modification(2, 2, 2, [ "edit1a", "edit1b" ]));
+    section.applyModification(Modification(1, 2, 3, [ "edit2a", "edit2b", "edit2c" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.EDITED,    2),
+                                               tuple(LineState.EDITED,    3),
+                                               tuple(LineState.EDITED,    4) ]);
+    assertEqual(section.getEditedLine(1), "edit2a");
+    assertEqual(section.getEditedLine(2), "edit2b");
+    assertEqual(section.getEditedLine(3), "edit2c");
+    assertEqual(section.getEditedLine(4), "edit1b");
 }
 
 alias Array!ModifiableMergeResultSection MergeResultSections;
