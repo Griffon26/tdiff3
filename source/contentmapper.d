@@ -66,24 +66,29 @@ struct SectionInfo
     bool isDifference;
 }
 
-struct EditedLineSource
-{
-    int sectionIndex;
-    int modificationIndex;
-}
-
+/**
+ * Information about a line that indicates where the text of that line is stored.
+  */
 struct LineInfo
 {
+    /** Whether this line is from one of the input files (ORIGINAL) or has been modified by the user (EDITED) */
     LineState state;
     union
     {
+        /** The input file this line is from (A/B/C) (only if state is ORIGINAL) */
         LineSource source;
+        /** The section index of the ModifiableMergeResultSection that contains the edited line (only if state is EDITED) */
         int sectionIndex;
     }
+    /** The line number in the input file if state is ORIGINAL or the line number relative to the start of the section if state is EDITED. */
     int lineNumber;
 }
 
-/** Information about the lines in a merge section and where their content comes from. */
+/**
+ * The MergeResultSection maintains the user's conflict resolution choices for
+ * a single difference section and provides source file and line number
+ * information for the lines in this section.
+ */
 class MergeResultSection
 {
 private:
@@ -259,11 +264,30 @@ unittest
     assertEqual(calculateOverlap(2, 3, 2, 2), 2);
 }
 
+/**
+ * This class represents a line-based modification of text.
+ * 
+ * It replaces a number of lines in the section it is applied to with lines
+ * that are contained in the modification.
+ */
 struct Modification
 {
+    /**
+     * The first line of the modification relative to the start of the
+     * ModifiableMergeResultSection it is applied to. This is the line number
+     * in the possibly already modified section content. */
     int firstLine;
+    /**
+     * The number of lines in the section that will be replaced by new lines in
+     * this modification */
     int originalLineCount;
+    /**
+     * The number of lines that will replace the original lines
+     */
     int editedLineCount;
+    /**
+     * The replacement text for the lines that this modification changes
+     */
     string[] lines;
 
     this(int firstLine, int originalLineCount, int editedLineCount, string[] lines)
@@ -285,6 +309,9 @@ struct Modification
         assertEqual(mod.lines[1], "two");
     }
 
+    /**
+     * Return whether this modification is BEFORE, AFTER or OVERLAPPING the specified modification.
+     */
     RelativePosition checkRelativePosition(Modification newModification)
     {
         if(firstLine + editedLineCount < newModification.firstLine)
@@ -301,6 +328,13 @@ struct Modification
         }
     }
 
+    /**
+     * Merge another modification with this modification and return the merged modification.
+     *
+     * This function is meant to be called when applying a modification that
+     * overlaps with an existing modification to make sure that in the end all
+     * modifications to a section are non-overlapping.
+     */
     Modification merge(Modification newModification)
     {
         Modification mergedModification;
@@ -402,6 +436,10 @@ struct Modification
     }
 }
 
+/**
+ * The ModifiableMergeResultSection is a MergeResultSection that adds the
+ * ability to apply modifications to its content.
+ */
 class ModifiableMergeResultSection: MergeResultSection
 {
 private:
@@ -543,7 +581,7 @@ public:
         m_modifications = updatedModifications;
     }
 
-    /** Retrieve a line from this section. The first line of the section is line 0. */
+    /** Retrieve an edited line from this section. The first line of the section is line 0. */
     string getEditedLine(int relativeLineNumber)
     {
         foreach(modification; m_modifications)
