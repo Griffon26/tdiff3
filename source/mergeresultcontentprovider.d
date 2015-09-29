@@ -166,7 +166,7 @@ public:
 
     void save()
     {
-        if(!m_contentMapper.allConflictsSolved())
+        if(!m_contentMapper.allDifferencesSolved())
         {
             throw new UserException("Cannot save merge result until all conflicts have been solved.");
         }

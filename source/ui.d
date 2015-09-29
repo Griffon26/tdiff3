@@ -438,16 +438,16 @@ public:
                 switch(key.code.sym)
                 {
                 case TermKeySym.UP:
-                    m_editor.selectPreviousConflict();
+                    m_editor.selectPreviousDifference();
                     break;
                 case TermKeySym.DOWN:
-                    m_editor.selectNextConflict();
+                    m_editor.selectNextDifference();
                     break;
                 case TermKeySym.PAGEUP:
-                    m_editor.selectPreviousUnsolvedConflict();
+                    m_editor.selectPreviousUnsolvedDifference();
                     break;
                 case TermKeySym.PAGEDOWN:
-                    m_editor.selectNextUnsolvedConflict();
+                    m_editor.selectNextUnsolvedDifference();
                     break;
                 default:
                     keyWasIgnored = true;

@@ -113,39 +113,39 @@ public:
     }
 
     /* Editor operations */
-    void selectNextConflict()
+    void selectNextDifference()
     {
-        int nextConflict = m_contentMapper.findNextConflictingSection(m_selectedSection);
-        if(nextConflict != -1)
+        int sectionIndex = m_contentMapper.findNextDifference(m_selectedSection);
+        if(sectionIndex != -1)
         {
-            setSelectedSection(nextConflict);
+            setSelectedSection(sectionIndex);
         }
     }
 
-    void selectPreviousConflict()
+    void selectPreviousDifference()
     {
-        int previousConflict = m_contentMapper.findPreviousConflictingSection(m_selectedSection);
-        if(previousConflict != -1)
+        int sectionIndex = m_contentMapper.findPreviousDifference(m_selectedSection);
+        if(sectionIndex != -1)
         {
-            setSelectedSection(previousConflict);
+            setSelectedSection(sectionIndex);
         }
     }
 
-    void selectNextUnsolvedConflict()
+    void selectNextUnsolvedDifference()
     {
-        int nextConflict = m_contentMapper.findNextUnsolvedConflictingSection(m_selectedSection);
-        if(nextConflict != -1)
+        int sectionIndex = m_contentMapper.findNextUnsolvedDifference(m_selectedSection);
+        if(sectionIndex != -1)
         {
-            setSelectedSection(nextConflict);
+            setSelectedSection(sectionIndex);
         }
     }
 
-    void selectPreviousUnsolvedConflict()
+    void selectPreviousUnsolvedDifference()
     {
-        int previousConflict = m_contentMapper.findPreviousUnsolvedConflictingSection(m_selectedSection);
-        if(previousConflict != -1)
+        int sectionIndex = m_contentMapper.findPreviousUnsolvedDifference(m_selectedSection);
+        if(sectionIndex != -1)
         {
-            setSelectedSection(previousConflict);
+            setSelectedSection(sectionIndex);
         }
     }
 

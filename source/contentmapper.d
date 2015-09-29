@@ -52,7 +52,7 @@ enum LineState
 
 /**
  * Information about the location of a section within the content for each
- * pane, as well as the conflict status of the section.
+ * pane, as well as the difference status of the section.
  */
 struct SectionInfo
 {
@@ -62,8 +62,8 @@ struct SectionInfo
     /** The content line numbers in the merge result pane associated with the section */
     LineNumberRange mergeResultPaneLineNumbers;
 
-    /** Whether or not the section is a conflict */
-    bool isConflict;
+    /** Whether or not the section represents a difference between input files */
+    bool isDifference;
 }
 
 struct EditedLineSource
@@ -92,17 +92,17 @@ private:
     LineNumberRange[3] m_inputLineNumbers;
     LineNumberRange m_diff3LineNumbers;
 
-    bool m_isConflict;
+    bool m_isDifference;
     LineSource[] m_selectedSources;
 
 public:
-    this(bool isConflict,
+    this(bool isDifference,
          int firstInputLineA, int lastInputLineA,
          int firstInputLineB, int lastInputLineB,
          int firstInputLineC, int lastInputLineC,
          int firstDiff3Line, int lastDiff3Line)
     {
-        m_isConflict = isConflict;
+        m_isDifference = isDifference;
         m_inputLineNumbers[LineSource.A].firstLine = firstInputLineA;
         m_inputLineNumbers[LineSource.B].firstLine = firstInputLineB;
         m_inputLineNumbers[LineSource.C].firstLine = firstInputLineC;
@@ -123,7 +123,7 @@ public:
     {
         int count = 0;
 
-        if(m_isConflict)
+        if(m_isDifference)
         {
             if(m_selectedSources.length == 0)
             {
@@ -155,7 +155,7 @@ public:
 
     void toggle(LineSource lineSource)
     {
-        assert(m_isConflict);
+        assert(m_isDifference);
 
         if(m_selectedSources.canFind(lineSource))
         {
@@ -171,7 +171,7 @@ public:
     {
         LineInfo lineInfo;
 
-        if(m_isConflict)
+        if(m_isDifference)
         {
             if(m_selectedSources.length == 0)
             {
@@ -231,7 +231,7 @@ public:
 
     bool isSolved()
     {
-        return !m_isConflict || m_selectedSources.length != 0;
+        return !m_isDifference || m_selectedSources.length != 0;
     }
 }
 
@@ -408,13 +408,13 @@ private:
     DList!Modification m_modifications;
 
 public:
-    this(bool isConflict,
+    this(bool isDifference,
          int firstInputLineA, int lastInputLineA,
          int firstInputLineB, int lastInputLineB,
          int firstInputLineC, int lastInputLineC,
          int firstDiff3Line, int lastDiff3Line)
     {
-        super(isConflict,
+        super(isDifference,
               firstInputLineA, lastInputLineA,
               firstInputLineB, lastInputLineB,
               firstInputLineC, lastInputLineC,
@@ -717,7 +717,7 @@ version(unittest)
 {
     private Tuple!(bool, int, int, int, int, int, int, int, int) toTuple(MergeResultSection section)
     {
-        return tuple(section.m_isConflict,
+        return tuple(section.m_isDifference,
                      section.m_inputLineNumbers[LineSource.A].firstLine,
                      section.m_inputLineNumbers[LineSource.A].lastLine,
                      section.m_inputLineNumbers[LineSource.B].firstLine,
@@ -745,7 +745,7 @@ version(unittest)
  * The ContentMapper is responsible for keeping track of the source for each
  * line in the merge result. One possible source is the list of edited lines
  * that it also maintains. It must also be able to provide location and state
- * information for all conflicted sections in the merge result.
+ * information for all difference sections in the merge result.
  */
 class ContentMapper
 {
@@ -819,7 +819,7 @@ public:
 
     unittest
     {
-        /* Test a single one-line non-conflicted section */
+        /* Test a single one-line non-difference section */
         Diff3LineArray d3la = make!(Diff3LineArray);
         d3la.insertBack(Diff3Line( 1,  11,  21, true, true, true));
         auto sections = calculateMergeResultSections(d3la);
@@ -830,7 +830,7 @@ public:
 
     unittest
     {
-        /* Test a single multi-line non-conflicted section */
+        /* Test a single multi-line non-difference section */
         Diff3LineArray d3la = make!(Diff3LineArray);
         d3la.insertBack(Diff3Line( 0,  10,  20, true, true, true));
         d3la.insertBack(Diff3Line( 1,  11,  21, true, true, true));
@@ -842,7 +842,7 @@ public:
 
     unittest
     {
-        /* Test a single multi-line conflicted section */
+        /* Test a single multi-line difference section */
         Diff3LineArray d3la = make!(Diff3LineArray);
         d3la.insertBack(Diff3Line( 0,  10,  20, false, true, true));
         d3la.insertBack(Diff3Line( 1,  11,  21, false, true, true));
@@ -854,7 +854,7 @@ public:
 
     unittest
     {
-        /* Test differently conflicting sections */
+        /* Test differently differing sections */
         Diff3LineArray d3la = make!(Diff3LineArray);
         d3la.insertBack(Diff3Line( 0,  10,  20, false, true, true));
         d3la.insertBack(Diff3Line( 1,  11,  21, false, true, true));
@@ -868,7 +868,7 @@ public:
 
     unittest
     {
-        /* Test a conflicting and a non-conflicting section */
+        /* Test a difference and a non-difference section */
         Diff3LineArray d3la = make!(Diff3LineArray);
         d3la.insertBack(Diff3Line( 0,  10,  20, false, true, true));
         d3la.insertBack(Diff3Line( 1,  11,  21, false, true, true));
@@ -882,7 +882,7 @@ public:
 
     unittest
     {
-        /* Test conflicting sections with gaps */
+        /* Test difference sections with gaps */
         Diff3LineArray d3la = make!(Diff3LineArray);
         d3la.insertBack(Diff3Line( 0,  10,  20, false, true, true));
         d3la.insertBack(Diff3Line(-1,  11,  21, false, true, true));
@@ -896,7 +896,7 @@ public:
 
     unittest
     {
-        /* Test conflicting sections without no lines at all in one of the files */
+        /* Test difference sections without no lines at all in one of the files */
         Diff3LineArray d3la = make!(Diff3LineArray);
         d3la.insertBack(Diff3Line(-1,  10,  20, false, true, true));
         d3la.insertBack(Diff3Line(-1,  11,  21, false, true, true));
@@ -915,7 +915,7 @@ public:
         m_mergeResultSections = calculateMergeResultSections(d3la);
     }
 
-    void automaticallyResolveConflicts(Diff3LineArray d3la)
+    void automaticallyResolveDifferences(Diff3LineArray d3la)
     {
         assert(!m_mergeResultSections.empty);
 
@@ -923,14 +923,14 @@ public:
         {
             auto d3l = d3la[section.m_diff3LineNumbers.firstLine];
 
-            if(!section.m_isConflict)
+            if(!section.m_isDifference)
                 continue;
 
             if(d3l.bAEqC)
             {
                 if(d3l.bAEqB)
                 {
-                    /* Everything is the same, but we shouldn't have come here for non-conflict sections */
+                    /* Everything is the same, but we shouldn't have come here for non-difference sections */
                     assert(false);
                 }
                 else
@@ -1159,7 +1159,7 @@ public:
         MergeResultSection section = m_mergeResultSections[sectionIndex];
         SectionInfo info;
         info.inputPaneLineNumbers = section.m_diff3LineNumbers;
-        info.isConflict = section.m_isConflict;
+        info.isDifference = section.m_isDifference;
 
         // TODO: Optimize this to avoid looping over all sections every time section info is requested.
         int i;
@@ -1194,12 +1194,12 @@ public:
         }
     }
 
-    int findNextConflictingSection(int sectionIndex)
+    int findNextDifference(int sectionIndex)
     {
-        return findNextSectionUsingPredicate(sectionIndex, s => s.m_isConflict);
+        return findNextSectionUsingPredicate(sectionIndex, s => s.m_isDifference);
     }
 
-    int findNextUnsolvedConflictingSection(int sectionIndex)
+    int findNextUnsolvedDifference(int sectionIndex)
     {
         return findNextSectionUsingPredicate(sectionIndex, s => !s.isSolved());
     }
@@ -1216,17 +1216,17 @@ public:
         return sectionIndex;
     }
 
-    int findPreviousConflictingSection(int sectionIndex)
+    int findPreviousDifference(int sectionIndex)
     {
-        return findPreviousSectionUsingPredicate(sectionIndex, s => s.m_isConflict);
+        return findPreviousSectionUsingPredicate(sectionIndex, s => s.m_isDifference);
     }
 
-    int findPreviousUnsolvedConflictingSection(int sectionIndex)
+    int findPreviousUnsolvedDifference(int sectionIndex)
     {
         return findPreviousSectionUsingPredicate(sectionIndex, s => !s.isSolved());
     }
 
-    bool allConflictsSolved()
+    bool allDifferencesSolved()
     {
         return all!((MergeResultSection s) { return s.isSolved(); } ) (m_mergeResultSections[]);
     }

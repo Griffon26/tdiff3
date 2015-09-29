@@ -188,7 +188,7 @@ void main(string[] args)
 
     auto contentMapper = new ContentMapper();
     contentMapper.determineMergeResultSections(d3la);
-    contentMapper.automaticallyResolveConflicts(d3la);
+    contentMapper.automaticallyResolveDifferences(d3la);
 
     auto mergeResultContentProvider = new MergeResultContentProvider(contentMapper, lps[0], lps[1], lps[2], outputFileName);
 
