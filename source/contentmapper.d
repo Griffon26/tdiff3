@@ -430,9 +430,13 @@ public:
             numberOfLines += modification.editedLineCount;
         }
 
-        /* If the edit has removed all lines, then this section will consist of
-         * a single "no source line" line */
-        if(numberOfLines == 0)
+        /* If the edit has removed all lines and this section represents a
+         * difference between input files, then this section will consist of a
+         * single "no source line" line.
+         * If the input files are the same for this section, then the section
+         * size will become 0, which is the same as having been removed
+         * entirely. */
+        if(numberOfLines == 0 && m_isDifference)
         {
             numberOfLines = 1;
         }
@@ -1078,6 +1082,32 @@ public:
 
     unittest
     {
+        /* Test that deleting a complete non-difference section leaves no lines */
+        auto cm = new ContentMapper();
+        cm.m_mergeResultSections = MergeResultSections([ new ModifiableMergeResultSection(false,
+                                                                                          10, 11,
+                                                                                          10, 11,
+                                                                                          10, 11,
+                                                                                          20, 21) ]);
+        cm.applyModification(Modification(0, 2, 0, []));
+        assertArraysEqual(cm.toLines(), []);
+    }
+
+    unittest
+    {
+        /* Test that deleting a complete difference section leaves a single "no source line" line */
+        auto cm = new ContentMapper();
+        cm.m_mergeResultSections = MergeResultSections([ new ModifiableMergeResultSection(true,
+                                                                                          10, 11,
+                                                                                          10, 11,
+                                                                                          10, 11,
+                                                                                          20, 21) ]);
+        cm.applyModification(Modification(0, 2, 0, []));
+        assertArraysEqual(cm.toLines(), [ "no source line" ]);
+    }
+
+    unittest
+    {
         /* Test a single modification spanning two sections */
         auto cm = new ContentMapper();
         cm.m_mergeResultSections = MergeResultSections([ new ModifiableMergeResultSection(false,
@@ -1126,27 +1156,13 @@ public:
                                           "edited 2",
                                           "edited 3",
                                           "edited 4",
-                                          "no source line",
                                           "original 15" ]);
 
         // Check that the edited lines are added to the first section
         assertEqual(cm.m_mergeResultSections[0].getOutputSize(), 5);
-        // Check that the middle section without lines, still has one "no source line" line
-        assertEqual(cm.m_mergeResultSections[1].getOutputSize(), 1);
+        // Check that the middle non-difference section has 0 lines
+        assertEqual(cm.m_mergeResultSections[1].getOutputSize(), 0);
         assertEqual(cm.m_mergeResultSections[2].getOutputSize(), 1);
-    }
-
-    unittest
-    {
-        /* Test that a modification can delete a complete section */
-        auto cm = new ContentMapper();
-        cm.m_mergeResultSections = MergeResultSections([ new ModifiableMergeResultSection(false,
-                                                                                          10, 11,
-                                                                                          10, 11,
-                                                                                          10, 11,
-                                                                                          20, 21) ]);
-        cm.applyModification(Modification(0, 2, 0, []));
-        assertArraysEqual(cm.toLines(), [ "no source line" ]);
     }
 
     ulong getNumberOfSections()
