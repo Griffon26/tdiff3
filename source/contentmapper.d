@@ -370,17 +370,13 @@ struct Modification
         {
             if(firstLine < newModification.firstLine)
             {
-                linesBefore = remainingEditedLines;
-            }
-            else if(firstLine + editedLineCount >
-                    newModification.firstLine + newModification.originalLineCount)
-            {
-                linesAfter = remainingEditedLines;
+                linesBefore = newModification.firstLine - firstLine;
             }
             else
             {
-                assert(false);
+                linesBefore = 0;
             }
+            linesAfter = remainingEditedLines - linesBefore;
         }
 
         mergedModification.lines.length = linesBefore + newModification.lines.length + linesAfter;
@@ -790,6 +786,28 @@ unittest
 
 unittest
 {
+    /* Check if a modification can be applied that completely overlaps an existing modification */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 14,
+                                                                            10, 14,
+                                                                            10, 14,
+                                                                            20, 24);
+    section.applyModification(Modification(2, 1, 2, [ "edit2a", "edit2b" ]));
+    section.applyModification(Modification(1, 4, 3, [ "edit1a", "edit1b", "edit1c" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.EDITED,    2),
+                                               tuple(LineState.EDITED,    3),
+                                               tuple(LineState.ORIGINAL, 14),
+                                            ]);
+    assertEqual(section.getEditedLine(1), "edit1a");
+    assertEqual(section.getEditedLine(2), "edit1b");
+    assertEqual(section.getEditedLine(3), "edit1c");
+}
+
+unittest
+{
     /* Check if a modification can be applied that overlaps the end of an existing modification */
     ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
                                                                             10, 13,
@@ -830,6 +848,74 @@ unittest
 
 unittest
 {
+    /* Check if a modification can be applied that overlaps the middle of an existing modification */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 14,
+                                                                            10, 14,
+                                                                            10, 14,
+                                                                            20, 24);
+    section.applyModification(Modification(1, 3, 3, [ "edit1a", "edit1b", "edit1c" ]));
+    section.applyModification(Modification(2, 1, 1, [ "edit2" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.EDITED,    2),
+                                               tuple(LineState.EDITED,    3),
+                                               tuple(LineState.ORIGINAL, 14),
+                                            ]);
+    assertEqual(section.getEditedLine(1), "edit1a");
+    assertEqual(section.getEditedLine(2), "edit2");
+    assertEqual(section.getEditedLine(3), "edit1c");
+}
+
+unittest
+{
+    /* Check if a modification can be applied that overlaps and expands the middle of an existing modification */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 14,
+                                                                            10, 14,
+                                                                            10, 14,
+                                                                            20, 24);
+    section.applyModification(Modification(1, 3, 3, [ "edit1a", "edit1b", "edit1c" ]));
+    section.applyModification(Modification(2, 1, 2, [ "edit2a", "edit2b" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.EDITED,    2),
+                                               tuple(LineState.EDITED,    3),
+                                               tuple(LineState.EDITED,    4),
+                                               tuple(LineState.ORIGINAL, 14),
+                                            ]);
+    assertEqual(section.getEditedLine(1), "edit1a");
+    assertEqual(section.getEditedLine(2), "edit2a");
+    assertEqual(section.getEditedLine(3), "edit2b");
+    assertEqual(section.getEditedLine(4), "edit1c");
+}
+
+unittest
+{
+    /* Check if a modification can be applied that overlaps and shrinks the middle of an existing modification */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 15,
+                                                                            10, 15,
+                                                                            10, 15,
+                                                                            20, 25);
+    section.applyModification(Modification(1, 4, 4, [ "edit1a", "edit1b", "edit1c", "edit1d" ]));
+    section.applyModification(Modification(2, 2, 1, [ "edit2" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.EDITED,    2),
+                                               tuple(LineState.EDITED,    3),
+                                               tuple(LineState.ORIGINAL, 15),
+                                            ]);
+    assertEqual(section.getEditedLine(1), "edit1a");
+    assertEqual(section.getEditedLine(2), "edit2");
+    assertEqual(section.getEditedLine(3), "edit1d");
+}
+
+unittest
+{
     /* Check if a modification can be applied that overlaps the beginning of an existing modification and changes the offset of the existing modification */
     ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
                                                                             10, 13,
@@ -848,6 +934,32 @@ unittest
     assertEqual(section.getEditedLine(2), "edit2b");
     assertEqual(section.getEditedLine(3), "edit2c");
     assertEqual(section.getEditedLine(4), "edit1b");
+}
+
+unittest
+{
+    /* Check if a modification can be applied that overlaps the end of one existing modification and the beginning of another */
+    ModifiableMergeResultSection section = new ModifiableMergeResultSection(false,
+                                                                            10, 14,
+                                                                            10, 14,
+                                                                            10, 14,
+                                                                            20, 24);
+    section.applyModification(Modification(1, 1, 2, [ "edit1a", "edit1b" ]));
+    section.applyModification(Modification(4, 1, 2, [ "edit2a", "edit2b" ]));
+    section.applyModification(Modification(2, 3, 3, [ "edit3a", "edit3b", "edit3c" ]));
+
+    assertArraysEqual(section.toLineInfos(), [ tuple(LineState.ORIGINAL, 10),
+                                               tuple(LineState.EDITED,    1),
+                                               tuple(LineState.EDITED,    2),
+                                               tuple(LineState.EDITED,    3),
+                                               tuple(LineState.EDITED,    4),
+                                               tuple(LineState.EDITED,    5),
+                                               tuple(LineState.ORIGINAL, 14) ]);
+    assertEqual(section.getEditedLine(1), "edit1a");
+    assertEqual(section.getEditedLine(2), "edit3a");
+    assertEqual(section.getEditedLine(3), "edit3b");
+    assertEqual(section.getEditedLine(4), "edit3c");
+    assertEqual(section.getEditedLine(5), "edit2b");
 }
 
 alias Array!ModifiableMergeResultSection MergeResultSections;
@@ -1419,151 +1531,3 @@ public:
     }
 }
 
-/+
-unittest
-{
-    /* Check if the original lines are returned if there are no modifications */
-    auto mcp = new ModifiedContentProvider(lp);
-
-    assertEqual(mcp.get(0), "line 0\n");
-    assertEqual(mcp.get(10), "line 10\n");
-    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1);
-}
-
-unittest
-{
-    /* Test with one modification that inserts more lines than it replaces */
-    auto mcp = new ModifiedContentProvider(lp);
-
-    mcp.applyModification(Modification(3, 1, 2, ["editedline 1\n", "editedline 2\n"]));
-    assertEqual(mcp.get(2), "line 2\n");
-    assertEqual(mcp.get(3), "editedline 1\n");
-    assertEqual(mcp.get(4), "editedline 2\n");
-    assertEqual(mcp.get(5), "line 4\n");
-    assertEqual(mcp.get(6), "line 5\n");
-    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 1);
-}
-
-unittest
-{
-    /* Test adding one modification that inserts fewer lines than it replaces */
-    auto mcp = new ModifiedContentProvider(lp);
-
-    mcp.applyModification(Modification(3, 2, 1, ["editedline 1\n"]));
-    assertEqual(mcp.get(2), "line 2\n");
-    assertEqual(mcp.get(3), "editedline 1\n");
-    assertEqual(mcp.get(4), "line 5\n");
-    assertEqual(mcp.get(5), "line 6\n");
-    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 - 1);
-}
-
-unittest
-{
-    /* Test adding a second modification that does not overlap after the first one */
-    auto mcp = new ModifiedContentProvider(lp);
-
-    mcp.applyModification(Modification(3, 1, 2, ["editedline a1\n", "editedline a2\n"]));
-    mcp.applyModification(Modification(6, 1, 2, ["editedline b1\n", "editedline b2\n"]));
-
-    assertEqual(mcp.get(2), "line 2\n");
-    assertEqual(mcp.get(3), "editedline a1\n");
-    assertEqual(mcp.get(4), "editedline a2\n");
-    assertEqual(mcp.get(5), "line 4\n");
-    assertEqual(mcp.get(6), "editedline b1\n");
-    assertEqual(mcp.get(7), "editedline b2\n");
-    assertEqual(mcp.get(8), "line 6\n");
-    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 2);
-}
-
-unittest
-{
-    /* Test adding a third modification that does not overlap between the first and second one */
-    auto mcp = new ModifiedContentProvider(lp);
-
-    mcp.applyModification(Modification(2, 1, 2, ["editedline a1\n", "editedline a2\n"]));
-    mcp.applyModification(Modification(7, 1, 2, ["editedline b1\n", "editedline b2\n"]));
-    mcp.applyModification(Modification(5, 1, 2, ["editedline c1\n", "editedline c2\n"]));
-
-    assertEqual(mcp.get(1), "line 1\n");
-    assertEqual(mcp.get(2), "editedline a1\n");
-    assertEqual(mcp.get(3), "editedline a2\n");
-    assertEqual(mcp.get(4), "line 3\n");
-    assertEqual(mcp.get(5), "editedline c1\n");
-    assertEqual(mcp.get(6), "editedline c2\n");
-    assertEqual(mcp.get(7), "line 5\n");
-    assertEqual(mcp.get(8), "editedline b1\n");
-    assertEqual(mcp.get(9), "editedline b2\n");
-    assertEqual(mcp.get(10), "line 7\n");
-    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 3);
-}
-
-unittest
-{
-    /* Test adding a second modification that overlaps with the end of the first one */
-    auto mcp = new ModifiedContentProvider(lp);
-
-    mcp.applyModification(Modification(3, 1, 2, ["editedline a1\n", "editedline a2\n"]));
-    mcp.applyModification(Modification(4, 1, 2, ["editedline b1\n", "editedline b2\n"]));
-
-    assertEqual(mcp.get(2), "line 2\n");
-    assertEqual(mcp.get(3), "editedline a1\n");
-    assertEqual(mcp.get(4), "editedline b1\n");
-    assertEqual(mcp.get(5), "editedline b2\n");
-    assertEqual(mcp.get(6), "line 4\n");
-    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 2);
-}
-
-unittest
-{
-    /* Test adding a second modification that overlaps with the beginning of the first one */
-    auto mcp = new ModifiedContentProvider(lp);
-
-    mcp.applyModification(Modification(3, 1, 2, ["editedline a1\n", "editedline a2\n"]));
-    mcp.applyModification(Modification(2, 2, 2, ["editedline b1\n", "editedline b2\n"]));
-
-    assertEqual(mcp.get(1), "line 1\n");
-    assertEqual(mcp.get(2), "editedline b1\n");
-    assertEqual(mcp.get(3), "editedline b2\n");
-    assertEqual(mcp.get(4), "editedline a2\n");
-    assertEqual(mcp.get(5), "line 4\n");
-    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 1);
-}
-
-unittest
-{
-    /* Test adding a second modification that overlaps with the middle of the first one */
-    auto mcp = new ModifiedContentProvider(lp);
-
-    mcp.applyModification(Modification(3, 1, 2, ["editedline a1\n", "editedline a2\n"]));
-    mcp.applyModification(Modification(2, 4, 4, ["editedline b1\n", "editedline b2\n", "editedline b3\n", "editedline b4\n"]));
-
-    assertEqual(mcp.get(1), "line 1\n");
-    assertEqual(mcp.get(2), "editedline b1\n");
-    assertEqual(mcp.get(3), "editedline b2\n");
-    assertEqual(mcp.get(4), "editedline b3\n");
-    assertEqual(mcp.get(5), "editedline b4\n");
-    assertEqual(mcp.get(6), "line 5\n");
-    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 1);
-}
-
-unittest
-{
-    /* Test adding a third modification that overlaps with the first and second modification */
-    auto mcp = new ModifiedContentProvider(lp);
-
-    mcp.applyModification(Modification(2, 1, 2, ["editedline a1\n", "editedline a2\n"]));
-    mcp.applyModification(Modification(5, 1, 2, ["editedline b1\n", "editedline b2\n"]));
-    mcp.applyModification(Modification(3, 3, 4, ["editedline c1\n", "editedline c2\n", "editedline c3\n", "editedline c4\n"]));
-
-    assertEqual(mcp.get(1), "line 1\n");
-    assertEqual(mcp.get(2), "editedline a1\n");
-    assertEqual(mcp.get(3), "editedline c1\n");
-    assertEqual(mcp.get(4), "editedline c2\n");
-    assertEqual(mcp.get(5), "editedline c3\n");
-    assertEqual(mcp.get(6), "editedline c4\n");
-    assertEqual(mcp.get(7), "editedline b2\n");
-    assertEqual(mcp.get(8), "line 5\n");
-    assertEqual(mcp.getContentHeight(), lp.getLastLineNumber() + 1 + 3);
-}
-
-+/
