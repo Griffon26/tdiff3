@@ -74,8 +74,8 @@ public:
         m_maxScrollPositionX = m_cp.getContentWidth() - m_width;
         m_maxScrollPositionY = m_cp.getContentHeight() - m_height;
 
-        m_scrollPositionX = min(m_scrollPositionX, m_maxScrollPositionX);
-        m_scrollPositionY = min(m_scrollPositionY, m_maxScrollPositionY);
+        m_scrollPositionX = max(min(m_scrollPositionX, m_maxScrollPositionX), 0);
+        m_scrollPositionY = max(min(m_scrollPositionY, m_maxScrollPositionY), 0);
     }
 
     protected void drawMissingLine(int contentLine)

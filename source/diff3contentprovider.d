@@ -57,9 +57,17 @@ class Diff3ContentProvider: IFormattedContentProvider
     {
         Nullable!string result;
 
-        assert(contentLine < m_contentHeight);
+        assert(contentLine >= 0);
 
-        int fileLine = m_d3la[contentLine].line(m_fileIndex);
+        int fileLine;
+        if(contentLine >= m_contentHeight)
+        {
+            fileLine = -1;
+        }
+        else
+        {
+            fileLine = m_d3la[contentLine].line(m_fileIndex);
+        }
 
         if(fileLine == -1)
         {
@@ -74,9 +82,14 @@ class Diff3ContentProvider: IFormattedContentProvider
 
     StyleList getFormat(int contentLine)
     {
-        assert(contentLine < m_contentHeight);
-
-        return m_d3la[contentLine].style(m_fileIndex).dup;
+        if(contentLine < m_contentHeight)
+        {
+            return m_d3la[contentLine].style(m_fileIndex).dup;
+        }
+        else
+        {
+            return StyleList();
+        }
     }
 
     int getContentWidth()

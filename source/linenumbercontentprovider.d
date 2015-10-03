@@ -56,9 +56,17 @@ class LineNumberContentProvider: IContentProvider
     {
         Nullable!string result;
 
-        assert(contentLine < m_contentHeight);
+        assert(contentLine >= 0);
 
-        int fileLine = m_d3la[contentLine].line(m_fileIndex);
+        int fileLine;
+        if(contentLine >= m_contentHeight)
+        {
+            fileLine = -1;
+        }
+        else
+        {
+            fileLine = m_d3la[contentLine].line(m_fileIndex);
+        }
 
         if(fileLine == -1)
         {

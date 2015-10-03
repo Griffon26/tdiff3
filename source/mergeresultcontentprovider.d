@@ -57,7 +57,8 @@ private:
     {
         UNRESOLVED_CONFLICT,
         NO_SOURCE_LINE,
-        NORMAL
+        NORMAL,
+        NONE
     }
 
 public:
@@ -96,7 +97,7 @@ public:
                 lineType = LineType.NORMAL;
             }
             break;
-        case LineState.NONE:
+        case LineState.UNSELECTED:
             assert(!forSavingToFile);
             lineType = LineType.UNRESOLVED_CONFLICT;
 
@@ -118,6 +119,10 @@ public:
                 text = result;
             }
             break;
+        case LineState.NONE:
+            assert(!forSavingToFile);
+            lineType = LineType.NONE;
+            break;
         }
         return tuple!("lineType", "text")(lineType, text);
     }
@@ -138,6 +143,9 @@ public:
             break;
         case LineType.NO_SOURCE_LINE:
             result = "<no source line>\n";
+            break;
+        case LineType.NONE:
+            result.nullify();
             break;
         }
         return result;

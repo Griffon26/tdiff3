@@ -47,6 +47,7 @@ enum LineState
 {
     ORIGINAL,
     EDITED,
+    UNSELECTED,
     NONE
 }
 
@@ -182,7 +183,7 @@ public:
             {
                 assert(relativeLineNumber == 0);
 
-                lineInfo.state = LineState.NONE;
+                lineInfo.state = LineState.UNSELECTED;
                 lineInfo.source = LineSource.UNDEFINED;
                 lineInfo.lineNumber = -1;
                 return lineInfo;
@@ -1214,6 +1215,7 @@ public:
     LineInfo getMergeResultLineInfo(int lineInMergeResultPane)
     {
         int sectionIndex = 0;
+
         foreach(section; m_mergeResultSections)
         {
             int sectionSize = section.getOutputSize();
@@ -1229,7 +1231,12 @@ public:
             lineInMergeResultPane -= sectionSize;
             sectionIndex++;
         }
-        assert(false);
+
+        LineInfo lineInfo;
+        lineInfo.state = LineState.NONE;
+        lineInfo.source = LineSource.UNDEFINED;
+        lineInfo.lineNumber = -1;
+        return lineInfo;
     }
 
     void applyModification(Modification mod)
