@@ -29,7 +29,7 @@ import std.algorithm;
 
 import common;
 import contentmapper;
-import highlightaddingcontentprovider;
+import mergeresultcontentprovider;
 import myassert;
 import stringcolumns;
 
@@ -37,10 +37,7 @@ import stringcolumns;
 /**
  * The ContentEditor is responsible for translating editing commands received
  * from the Ui into modifications and send them to the ContentMapper.  It is
- * also responsible for maintaining the cursor position and selection state,
- * including the currently selected merge result section. It tells the
- * HighlightAddingContentProviders which lines to highlight based on the
- * selection.
+ * also responsible for maintaining the cursor position and selection state.
  *
  * <object data="../uml/contenteditor.svg" type="image/svg+xml"></object>
  */
@@ -49,14 +46,11 @@ import stringcolumns;
  * hide circle
  * skinparam minClassWidth 70
  * skinparam classArrowFontSize 8
- * class Ui --> ContentEditor: sends editing commands\ngets focus/cursor position
- * ContentEditor --> ContentMapper: applies modifications\nrequests section location\ngets line source
- * ContentEditor --> "1" HighlightAddingContentProvider: sets output lines to be highlighted
- * ContentEditor --> "3" HighlightAddingContentProvider: sets input lines to be highlighted
+ * class Ui --> ContentEditor: sends editing commands\nsends cursor navigation commands\ngets cursor position
+ * ContentEditor --> ContentMapper: applies modifications
  * ContentEditor --> ILineProvider: gets line
  *
  * url of Ui is [[../ui/Ui.html]]
- * url of HighlightAddingContentProvider is [[../highlightaddingcontentprovider/HighlightAddingContentProvider.html]]
  * url of ILineProvider is [[../ilineprovider/ILineProvider.html]]
  * url of ContentMapper is [[../contentmapper/ContentMapper.html]]
  * @enduml
@@ -67,16 +61,12 @@ private:
     bool m_selectionActive;
     Position m_selectionBegin;
     Position m_currentPos; /* also the end of the selection */
-    int m_selectedSection;
 
     string m_copyPasteBuffer;
-    HighlightAddingContentProvider[3] m_d3cps;
-    HighlightAddingContentProvider m_mcp;
+    MergeResultContentProvider m_mcp;
     ContentMapper m_contentMapper;
 
-    bool m_inputFocusChanged;
     bool m_outputFocusChanged;
-    Position m_inputFocusPosition;
     Position m_outputFocusPosition;
 
 public:
@@ -92,70 +82,13 @@ public:
         FILEEND
     }
 
-    this(HighlightAddingContentProvider[3] diff3ContentProviders, HighlightAddingContentProvider mergeResultContentProvider, ContentMapper contentMapper)
+    this(MergeResultContentProvider mergeResultContentProvider, ContentMapper contentMapper)
     {
-        m_d3cps = diff3ContentProviders;
         m_mcp = mergeResultContentProvider;
         m_contentMapper = contentMapper;
     }
 
-    private void setSelectedSection(int sectionIndex)
-    {
-        m_selectedSection = sectionIndex;
-
-        auto sectionInfo = m_contentMapper.getSectionInfo(sectionIndex);
-        foreach(cp; m_d3cps)
-        {
-            cp.setHighlight(sectionInfo.inputPaneLineNumbers);
-        }
-        m_mcp.setHighlight(sectionInfo.mergeResultPaneLineNumbers);
-        updateInputFocusPosition(Position(sectionInfo.inputPaneLineNumbers.firstLine, 0));
-        updateOutputFocusPosition(Position(sectionInfo.mergeResultPaneLineNumbers.firstLine, 0));
-    }
-
     /* Editor operations */
-    void selectNextDifference()
-    {
-        int sectionIndex = m_contentMapper.findNextDifference(m_selectedSection);
-        if(sectionIndex != -1)
-        {
-            setSelectedSection(sectionIndex);
-        }
-    }
-
-    void selectPreviousDifference()
-    {
-        int sectionIndex = m_contentMapper.findPreviousDifference(m_selectedSection);
-        if(sectionIndex != -1)
-        {
-            setSelectedSection(sectionIndex);
-        }
-    }
-
-    void selectNextUnsolvedDifference()
-    {
-        int sectionIndex = m_contentMapper.findNextUnsolvedDifference(m_selectedSection);
-        if(sectionIndex != -1)
-        {
-            setSelectedSection(sectionIndex);
-        }
-    }
-
-    void selectPreviousUnsolvedDifference()
-    {
-        int sectionIndex = m_contentMapper.findPreviousUnsolvedDifference(m_selectedSection);
-        if(sectionIndex != -1)
-        {
-            setSelectedSection(sectionIndex);
-        }
-    }
-
-    void toggleCurrentSectionSource(LineSource lineSource)
-    {
-        m_contentMapper.toggleSectionSource(m_selectedSection, lineSource);
-        setSelectedSection(m_selectedSection);
-    }
-
     void moveTo(Position newPos, bool withSelection)
     {
         if(!withSelection)
@@ -282,32 +215,15 @@ public:
      * Only when the focus position changes should the scroll position be
      * updated.
      */
-    private void updateInputFocusPosition(Position pos)
-    {
-        m_inputFocusChanged = true;
-        m_inputFocusPosition = pos;
-    }
-
     private void updateOutputFocusPosition(Position pos)
     {
         m_outputFocusChanged = true;
         m_outputFocusPosition = pos;
     }
 
-    bool inputFocusNeedsUpdate()
-    {
-        return m_inputFocusChanged;
-    }
-
     bool outputFocusNeedsUpdate()
     {
         return m_outputFocusChanged;
-    }
-
-    Position getInputFocusPosition()
-    {
-        m_inputFocusChanged = false;
-        return m_inputFocusPosition;
     }
 
     Position getOutputFocusPosition()

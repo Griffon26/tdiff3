@@ -30,13 +30,15 @@
  * hide circle
  * skinparam minClassWidth 70
  * skinparam classArrowFontSize 8
- * Ui --> ContentEditor: sends editing commands\ngets focus/cursor position
+ * Ui --> SectionNavigator: sends section navigation commands\ngets focus/cursor position
+ * Ui --> ContentEditor: sends editing commands\nsends cursor navigation commands\ngets focus/cursor position
  * Ui --> InputPanes: sets focus position
  * Ui --> EditableContentPane: sets focus/cursor position
- * ContentEditor --> ContentMapper: applies modifications\nrequests section location\ngets line source
- * ContentEditor --> "3" HighlightAddingContentProvider1: sets input lines to be highlighted
- * ContentEditor --> "1" HighlightAddingContentProvider2: sets output lines to be highlighted
- * ContentEditor --> ILineProvider: gets line
+ * SectionNavigator --> ContentMapper: requests section location
+ * SectionNavigator --> "3" HighlightAddingContentProvider1: sets input lines to be highlighted
+ * SectionNavigator --> "1" HighlightAddingContentProvider2: sets output lines to be highlighted
+ * ContentEditor --> ContentMapper: applies modifications
+ * ContentEditor --> MergeResultContentProvider: gets line
  * InputPanes --> "3" HighlightAddingContentProvider1: gets content
  * InputPanes --> "3" LineNumberContentProvider: gets content
  * EditableContentPane --> HighlightAddingContentProvider2: gets content

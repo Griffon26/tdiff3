@@ -48,6 +48,7 @@ import icontentprovider;
 import iformattedcontentprovider;
 import inputpanes;
 import mergeresultcontentprovider;
+import sectionnavigator;
 import theme;
 
 enum SIGWINCH = 28;
@@ -78,12 +79,14 @@ extern (C) void sigwinch_handler(int signum)
  * skinparam minClassWidth 70
  * skinparam classArrowFontSize 8
  * class Ui
- * Ui --> ContentEditor: sends editing commands\ngets focus/cursor position
+ * Ui --> SectionNavigator: sends section navigation commands\ntoggles section selection
+ * Ui --> ContentEditor: sends editing commands\nsends cursor navigation commands\ngets focus/cursor position
  * Ui --> InputPanes: sets focus position
  * Ui --> EditableContentPane: sets focus/cursor position
  *
  * url of InputPanes is [[../inputpanes/InputPanes.html]]
  * url of ContentEditor is [[../contenteditor/ContentEditor.html]]
+ * url of SectionNavigator is [[../sectionnavigator/SectionNavigator.html]]
  * url of EditableContentPane is [[../editablecontentpane/EditableContentPane.html]]
  * @enduml
  */
@@ -94,6 +97,7 @@ private:
     InputPanes m_inputPanes;
     EditableContentPane m_editableContentPane;
     ContentEditor m_editor;
+    SectionNavigator m_sectionNavigator;
     Theme m_theme;
     termios m_originalTermios;
 
@@ -294,7 +298,8 @@ public:
         m_inputPanes = new InputPanes(cps, lnps, m_theme);
         m_editableContentPane = new EditableContentPane(highlightedMergeResultContentProvider, m_theme);
 
-        m_editor = new ContentEditor(hcps, highlightedMergeResultContentProvider, contentMapper);
+        m_sectionNavigator = new SectionNavigator(hcps, highlightedMergeResultContentProvider, contentMapper);
+        m_editor = new ContentEditor(mergeResultContentProvider, contentMapper);
     }
 
     void setPosition(int x, int y, int screenWidth, int screenHeight)
@@ -420,13 +425,13 @@ public:
                 switch(key.code.codepoint)
                 {
                 case '1':
-                    m_editor.toggleCurrentSectionSource(LineSource.A);
+                    m_sectionNavigator.toggleCurrentSectionSource(LineSource.A);
                     break;
                 case '2':
-                    m_editor.toggleCurrentSectionSource(LineSource.B);
+                    m_sectionNavigator.toggleCurrentSectionSource(LineSource.B);
                     break;
                 case '3':
-                    m_editor.toggleCurrentSectionSource(LineSource.C);
+                    m_sectionNavigator.toggleCurrentSectionSource(LineSource.C);
                     break;
                 default:
                     keyWasIgnored = true;
@@ -438,16 +443,16 @@ public:
                 switch(key.code.sym)
                 {
                 case TermKeySym.UP:
-                    m_editor.selectPreviousDifference();
+                    m_sectionNavigator.selectPreviousDifference();
                     break;
                 case TermKeySym.DOWN:
-                    m_editor.selectNextDifference();
+                    m_sectionNavigator.selectNextDifference();
                     break;
                 case TermKeySym.PAGEUP:
-                    m_editor.selectPreviousUnsolvedDifference();
+                    m_sectionNavigator.selectPreviousUnsolvedDifference();
                     break;
                 case TermKeySym.PAGEDOWN:
-                    m_editor.selectNextUnsolvedDifference();
+                    m_sectionNavigator.selectNextUnsolvedDifference();
                     break;
                 default:
                     keyWasIgnored = true;
@@ -530,9 +535,13 @@ public:
                 }
             }
 
-            if(m_editor.inputFocusNeedsUpdate())
+            if(m_sectionNavigator.inputFocusNeedsUpdate())
             {
-                m_inputPanes.moveFocus(m_editor.getInputFocusPosition());
+                m_inputPanes.moveFocus(m_sectionNavigator.getInputFocusPosition());
+            }
+            if(m_sectionNavigator.outputFocusNeedsUpdate())
+            {
+                m_editableContentPane.moveFocus(m_sectionNavigator.getOutputFocusPosition());
             }
             if(m_editor.outputFocusNeedsUpdate())
             {
