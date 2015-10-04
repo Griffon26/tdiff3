@@ -124,14 +124,14 @@ public:
         switch(mv)
         {
         case Movement.RIGHT:
-            auto currentChar = m_mcp.get(m_currentPos.line).toStringColumns(m_currentPos.character).currentChar;
+            auto currentChar = m_mcp.getLineWithType(m_currentPos.line).text.toStringColumns(m_currentPos.character).currentChar;
             if(currentChar.nextColumn !is null)
             {
                 newPos.character = currentChar.nextColumn.column;
             }
             break;
         case Movement.LEFT:
-            auto currentChar = m_mcp.get(m_currentPos.line).toStringColumns(m_currentPos.character).currentChar;
+            auto currentChar = m_mcp.getLineWithType(m_currentPos.line).text.toStringColumns(m_currentPos.character).currentChar;
             if(currentChar.prevColumn !is null)
             {
                 newPos.character = currentChar.prevColumn.column;
@@ -141,7 +141,7 @@ public:
             if(m_currentPos.line > 0)
             {
                 newPos.line--;
-                auto currentChar = m_mcp.get(newPos.line).toStringColumns(m_currentPos.character).currentChar;
+                auto currentChar = m_mcp.getLineWithType(newPos.line).text.toStringColumns(m_currentPos.character).currentChar;
                 newPos.character = currentChar.column;
             }
             break;
@@ -149,7 +149,7 @@ public:
             if(m_currentPos.line < m_mcp.getContentHeight() - 1)
             {
                 newPos.line++;
-                auto currentChar = m_mcp.get(newPos.line).toStringColumns(m_currentPos.character).currentChar;
+                auto currentChar = m_mcp.getLineWithType(newPos.line).text.toStringColumns(m_currentPos.character).currentChar;
                 newPos.character = currentChar.column;
             }
             break;
@@ -157,7 +157,7 @@ public:
             newPos.character = 0;
             break;
         case Movement.LINEEND:
-            newPos.character = m_mcp.get(newPos.line).toStringColumns(m_currentPos.character).lastChar.column;
+            newPos.character = m_mcp.getLineWithType(newPos.line).text.toStringColumns(m_currentPos.character).lastChar.column;
             break;
         case Movement.FILEHOME:
             newPos.character = 0;
@@ -284,31 +284,58 @@ public:
         }
         else
         {
+            bool applyModification = false;
             auto mod = Modification();
             mod.firstLine = m_currentPos.line;
             mod.originalLineCount = 1;
             mod.editedLineCount = 1;
 
-            auto originalLine = m_mcp.get(m_currentPos.line);
+            auto originalLine = m_mcp.getLineWithType(m_currentPos.line);
 
-            auto currentChar = originalLine.toStringColumns(m_currentPos.character).currentChar;
-            if(currentChar.nextChar is null)
+            auto currentChar = originalLine.text.toStringColumns(m_currentPos.character).currentChar;
+
+            /* Don't delete anything when we're in an uneditable line */
+            if(originalLine.type != MergeResultContentProvider.LineType.NORMAL)
             {
-                /* Avoid deletion of the last newline in the file */
-                if(m_currentPos.line != m_mcp.getContentHeight() - 1)
+                /* Do nothing */
+                applyModification = false;
+            }
+            /* If we're just before the newline */
+            else if(currentChar.nextChar is null)
+            {
+                /* ... and we're also at the beginning of the line... */
+                if(currentChar.prevChar is null)
                 {
-                    mod.lines = [ originalLine[0..(currentChar.index)] ~ m_mcp.get(m_currentPos.line + 1) ];
-                    mod.originalLineCount = 2;
-                    m_contentMapper.applyModification(mod);
+                    /* ... then delete this line itself */
+                    mod.editedLineCount = 0;
+                    applyModification = true;
                 }
                 else
                 {
-                    /* Don't apply a modification if we've attempted to delete the newline of the last line */
+                    /* ... otherwise if the next line is not editable ... */
+                    auto nextLine = m_mcp.getLineWithType(m_currentPos.line + 1);
+                    if(nextLine.type != MergeResultContentProvider.LineType.NORMAL)
+                    {
+                        /* ... then refuse to delete the newline */
+                        applyModification = false;
+                    }
+                    else
+                    {
+                        /* ... otherwise stick the next line onto the end of the current one */
+                        mod.lines = [ originalLine.text[0..(currentChar.index)] ~ nextLine.text];
+                        mod.originalLineCount = 2;
+                        applyModification = true;
+                    }
                 }
             }
             else
             {
-                mod.lines = [ originalLine[0..(currentChar.index)] ~ originalLine[(currentChar.nextChar.index)..$] ];
+                mod.lines = [ originalLine.text[0..(currentChar.index)] ~ originalLine.text[(currentChar.nextChar.index)..$] ];
+                applyModification = true;
+            }
+
+            if(applyModification)
+            {
                 m_contentMapper.applyModification(mod);
             }
 

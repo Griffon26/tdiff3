@@ -77,9 +77,9 @@ public:
 
     /* IFormattedContentProvider methods */
 
-    private auto getLine(int lineNumber, bool forSavingToFile)
+    auto getLineWithType(int lineNumber)
     {
-        string text = "";
+        string text = "\n";
         LineType lineType;
 
         auto lineInfo = m_contentMapper.getMergeResultLineInfo(lineNumber);
@@ -98,7 +98,6 @@ public:
             }
             break;
         case LineState.UNSELECTED:
-            assert(!forSavingToFile);
             lineType = LineType.UNRESOLVED_CONFLICT;
 
             break;
@@ -120,20 +119,19 @@ public:
             }
             break;
         case LineState.NONE:
-            assert(!forSavingToFile);
             lineType = LineType.NONE;
             break;
         }
-        return tuple!("lineType", "text")(lineType, text);
+        return tuple!("type", "text")(lineType, text);
     }
 
     Nullable!string get(int lineNumber)
     {
         Nullable!string result;
 
-        auto line = getLine(lineNumber, false /* forSavingToFile */);
+        auto line = getLineWithType(lineNumber);
 
-        final switch(line.lineType)
+        final switch(line.type)
         {
         case LineType.NORMAL:
             result = line.text;
@@ -182,9 +180,11 @@ public:
         auto f = File(m_outputFileName, "w"); // open for writing
         for(int i = 0; i < getContentHeight(); i++)
         {
-            auto line = getLine(i, true /* forSavingToFile */);
-            assert(line.lineType != LineType.UNRESOLVED_CONFLICT);
-            if(line.lineType != LineType.NO_SOURCE_LINE)
+            auto line = getLineWithType(i);
+            assert(line.type != LineType.UNRESOLVED_CONFLICT);
+            assert(line.type != LineType.NONE);
+
+            if(line.type != LineType.NO_SOURCE_LINE)
             {
                 f.write(line.text);
             }
