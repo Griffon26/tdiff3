@@ -39,6 +39,8 @@ version(unittest)
 {
     string one_byte_one_column = "a";
     //dchar one_byte_two_columns = '';
+
+    string two_bytes_zero_columns = "\u0301"; // Unicode Character 'COMBINING ACUTE ACCENT' (U+0301)
     string two_bytes_one_column = "é";
     //dchar two_bytes_two_columns = '';
     string three_bytes_one_column = "€";
@@ -174,7 +176,7 @@ public:
         CharInfo prevChar;
         CharInfo prevColumn;
 
-        bool firstCharAtColumn = true;
+        bool firstCharInString = true;
 
         while(currentIndex < s.length)
         {
@@ -188,9 +190,10 @@ public:
             charInfo.prevChar = prevChar;
             charInfo.prevColumn = prevColumn;
 
-            if(firstCharAtColumn && currentColumn <= column)
+            if((firstCharInString || width > 0) && currentColumn <= column)
             {
                 m_currentChar = charInfo;
+                firstCharInString = false;
             }
 
             if(prevChar !is null)
@@ -211,11 +214,6 @@ public:
                     }
                 }
                 prevColumn = charInfo;
-                firstCharAtColumn = true;
-            }
-            else
-            {
-                firstCharAtColumn = false;
             }
 
             currentColumn += width;
@@ -228,6 +226,20 @@ public:
 
     version(unittest)
     {
+        string toColumnIndices()
+        {
+            string text;
+            auto charInfo = m_chars.front;
+            while(charInfo)
+            {
+                text ~= (charInfo.prevColumn is null) ? "." : "-";
+                text ~= to!string(charInfo.index);
+                text ~= (charInfo.nextColumn is null) ? "." : "-";
+                charInfo = charInfo.nextColumn;
+            }
+            return text;
+        }
+
         string toColumns()
         {
             string text;
@@ -294,6 +306,10 @@ public:
         assertEqual(new StringColumns(three_bytes_two_columns ~ "x", 0).toColumnsAndIndices, [".0--2.", ".0--3."]);
         assertEqual(new StringColumns(four_bytes_two_columns ~ "x", 0).toColumnsAndIndices, [".0--2.", ".0--4."]);
         assertEqual(new StringColumns(four_bytes_unprintable ~ "x", 0).toColumnsAndIndices, [".0--1.", ".0--4."]);
+
+        assertEqual(new StringColumns("a" ~ two_bytes_zero_columns ~ "b", 0).toColumnsAndIndices, [".0--1.", ".0--1--3."]);
+        assertEqual(new StringColumns("a" ~ two_bytes_zero_columns ~ "b", 0).toColumnIndices, ".0--3.");
+
     }
 
     unittest
@@ -306,6 +322,7 @@ public:
         assertEqual(new StringColumns("a\tc", 1).getCharIndexOfCurrent, 1);
         assertEqual(new StringColumns("a\tc", 2).getCharIndexOfCurrent, 1);
 
+        assertEqual(new StringColumns("e" ~ two_bytes_zero_columns ~ "x", 1).getCharIndexOfCurrent, 2);
         assertEqual(new StringColumns(three_bytes_two_columns ~ "x", 0).getCharIndexOfCurrent, 0);
         assertEqual(new StringColumns(three_bytes_two_columns ~ "x", 1).getCharIndexOfCurrent, 0);
         assertEqual(new StringColumns(three_bytes_two_columns ~ "x", 2).getCharIndexOfCurrent, 1);
@@ -328,6 +345,7 @@ public:
         assertEqual(new StringColumns("abc", 0).m_nrOfColumns, 3);
         assertEqual(new StringColumns("\tbc", 0).m_nrOfColumns, 10);
         assertEqual(new StringColumns("a\tc", 0).m_nrOfColumns, 9);
+        assertEqual(new StringColumns("a" ~ two_bytes_zero_columns ~ "b", 0).m_nrOfColumns, 2);
     }
 
     /**

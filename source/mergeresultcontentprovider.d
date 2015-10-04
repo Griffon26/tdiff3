@@ -39,6 +39,14 @@ import iformattedcontentprovider;
 import ilineprovider;
 import myassert;
 
+enum LineType
+{
+    UNRESOLVED_CONFLICT,
+    NO_SOURCE_LINE,
+    NORMAL,
+    NONE
+}
+
 /**
  * MergeResultContentProvider is provides a view on the content from an
  * ILineProvider plus modifications. It asks ContentMapper where it can find
@@ -52,14 +60,6 @@ private:
     shared ILineProvider[3] m_lps;
     DList!MergeResultSection m_mergeResultSections;
     string m_outputFileName;
-
-    enum LineType
-    {
-        UNRESOLVED_CONFLICT,
-        NO_SOURCE_LINE,
-        NORMAL,
-        NONE
-    }
 
 public:
     this(ContentMapper contentMapper,
@@ -77,7 +77,7 @@ public:
 
     /* IFormattedContentProvider methods */
 
-    auto getLineWithType(int lineNumber)
+    Tuple!(LineType, "type", string, "text") getLineWithType(int lineNumber)
     {
         string text = "\n";
         LineType lineType;

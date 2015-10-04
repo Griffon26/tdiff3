@@ -1216,20 +1216,23 @@ public:
     {
         int sectionIndex = 0;
 
-        foreach(section; m_mergeResultSections)
+        if(lineInMergeResultPane >= 0)
         {
-            int sectionSize = section.getOutputSize();
-            if(lineInMergeResultPane < sectionSize)
+            foreach(section; m_mergeResultSections)
             {
-                auto lineInfo = section.getLineInfo(lineInMergeResultPane);
-                if(lineInfo.state == LineState.EDITED)
+                int sectionSize = section.getOutputSize();
+                if(lineInMergeResultPane < sectionSize)
                 {
-                    lineInfo.sectionIndex = sectionIndex;
+                    auto lineInfo = section.getLineInfo(lineInMergeResultPane);
+                    if(lineInfo.state == LineState.EDITED)
+                    {
+                        lineInfo.sectionIndex = sectionIndex;
+                    }
+                    return lineInfo;
                 }
-                return lineInfo;
+                lineInMergeResultPane -= sectionSize;
+                sectionIndex++;
             }
-            lineInMergeResultPane -= sectionSize;
-            sectionIndex++;
         }
 
         LineInfo lineInfo;

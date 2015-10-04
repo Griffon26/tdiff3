@@ -395,10 +395,11 @@ public:
                 case TermKeySym.PAGEDOWN:
                     m_editor.moveDistance(ContentEditor.Movement.DOWN, m_editableContentPane.height, false);
                     break;
+                case TermKeySym.BACKSPACE:
+                    m_editor.backspace();
+                    break;
                 case TermKeySym.DELETE:
                     m_editor.delete_();
-                    //updateScrollLimits();
-                    //drawMissingLines(m_scrollPositionY, 0, m_height);
                     break;
                 default:
                     keyWasIgnored = true;

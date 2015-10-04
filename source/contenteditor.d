@@ -26,6 +26,9 @@
 module contenteditor;
 
 import std.algorithm;
+import std.c.locale;
+import std.conv;
+import std.typecons;
 
 import common;
 import contentmapper;
@@ -232,6 +235,217 @@ public:
         return m_outputFocusPosition;
     }
 
+    void backspace()
+    {
+        if(m_selectionActive)
+        {
+            delete_();
+        }
+        else
+        {
+            bool applyModification = false;
+            auto mod = Modification();
+            mod.firstLine = m_currentPos.line;
+            mod.originalLineCount = 1;
+            mod.editedLineCount = 1;
+
+            auto currentLine = m_mcp.getLineWithType(m_currentPos.line);
+            auto currentChar = currentLine.text.toStringColumns(m_currentPos.character).currentChar;
+
+            /* If we're at the start of a line, then it depends on the previous line if we can backspace */
+            if(currentChar.prevChar is null)
+            {
+                auto prevLine = m_mcp.getLineWithType(m_currentPos.line - 1);
+
+                /* If the previous line is a normal line... */
+                if(prevLine.type == LineType.NORMAL)
+                {
+                    /* ... and if it's empty ... */
+                    if(prevLine.text == "\n")
+                    {
+                        /* ... then delete that previous line */
+                        mod.firstLine = m_currentPos.line - 1;
+                        mod.editedLineCount = 0;
+                        applyModification = true;
+
+                        m_currentPos.line--;
+                    }
+                    /* ... but if the previous line is not empty we can only append this one if this one is a normal one */
+                    else if(currentLine.type == LineType.NORMAL)
+                    {
+                        /* ... otherwise stick the current line at the end of the previous one */
+                        auto lastCharOfPrevLine = prevLine.text.toStringColumns(0).lastChar;
+                        mod.firstLine = m_currentPos.line - 1;
+                        mod.originalLineCount = 2;
+                        mod.lines = [ prevLine.text[0..lastCharOfPrevLine.index] ~ currentLine.text ];
+                        applyModification = true;
+
+                        m_currentPos.line--;
+                        m_currentPos.character = lastCharOfPrevLine.column;
+                    }
+                    else
+                    {
+                        /* ... otherwise we ignore the backspace */
+                        applyModification = false;
+                    }
+                }
+                else
+                {
+                    /* ... otherwise ignore the backspace */
+                    applyModification = false;
+                }
+            }
+            /* ... if we're not at the start of a line ... */
+            else
+            {
+                /* ... and the line is a normal one ... */
+                if(currentLine.type == LineType.NORMAL)
+                {
+                    /* ... then we remove the previous char */
+                    auto deletedChar = currentChar.prevChar;
+                    mod.lines = [ currentLine.text[0..deletedChar.index] ~ currentLine.text[currentChar.index..$] ];
+                    applyModification = true;
+
+                    /* ... and move to the column after the last remaining character before the deleted one, so we can backspace multiple combining characters one by one */
+                    m_currentPos.character = (deletedChar.prevChar !is null) ? deletedChar.prevChar.nextColumn.column : deletedChar.column;
+                }
+                else
+                {
+                    /* otherwise we ignore the backspace */
+                    applyModification = false;
+                }
+            }
+            if(applyModification)
+            {
+                m_contentMapper.applyModification(mod);
+            }
+        }
+    }
+
+    unittest
+    {
+        /* Test that backspace at the beginning of a normal line, when there is an empty line before it, deletes the first line */
+        auto cm = new FakeContentMapper();
+        auto mcp = new FakeMergeResultContentProvider();
+        auto editor = new ContentEditor(mcp, cm);
+
+        mcp.content = [ tuple!("type", "text")(LineType.NORMAL, "\n"),
+                        tuple!("type", "text")(LineType.NORMAL, "def\n") ];
+
+        editor.moveTo(Position(1, 0), false);
+        editor.backspace();
+
+        assertEqual(cm.mods, [Modification(0, 1, 0, [])]);
+        assertEqual(editor.m_currentPos, Position(0, 0));
+    }
+
+    unittest
+    {
+        /* Test that backspace at the beginning of a normal line, when there is a non-empty normal line before it, concatenates both lines */
+        auto cm = new FakeContentMapper();
+        auto mcp = new FakeMergeResultContentProvider();
+        auto editor = new ContentEditor(mcp, cm);
+
+        mcp.content = [ tuple!("type", "text")(LineType.NORMAL, "abc\n"),
+                        tuple!("type", "text")(LineType.NORMAL, "def\n") ];
+
+        editor.moveTo(Position(1, 0), false);
+        editor.backspace();
+
+        assertEqual(cm.mods, [Modification(0, 2, 1, ["abcdef\n"])]);
+        assertEqual(editor.m_currentPos, Position(0, 3));
+    }
+
+    unittest
+    {
+        /* Test that backspace at the beginning of a non-normal line, when there is an empty line before it, deletes the first line */
+        auto cm = new FakeContentMapper();
+        auto mcp = new FakeMergeResultContentProvider();
+        auto editor = new ContentEditor(mcp, cm);
+
+        mcp.content = [ tuple!("type", "text")(LineType.NORMAL, "\n"),
+                        tuple!("type", "text")(LineType.UNRESOLVED_CONFLICT, "def\n")];
+
+        editor.moveTo(Position(1, 0), false);
+        editor.backspace();
+
+        assertEqual(cm.mods, [Modification(0, 1, 0, [])]);
+        assertEqual(editor.m_currentPos, Position(0, 0));
+    }
+
+    unittest
+    {
+        /* Test that backspace at the beginning of a non-normal line, when there is a non-empty normal line before it, does nothing */
+        auto cm = new FakeContentMapper();
+        auto mcp = new FakeMergeResultContentProvider();
+        auto editor = new ContentEditor(mcp, cm);
+
+        mcp.content = [ tuple!("type", "text")(LineType.NORMAL, "abc\n"),
+                        tuple!("type", "text")(LineType.UNRESOLVED_CONFLICT, "def\n")];
+
+        editor.moveTo(Position(1, 0), false);
+        editor.backspace();
+
+        assertEqual(cm.mods, []);
+        assertEqual(editor.m_currentPos, Position(1, 0));
+    }
+
+    unittest
+    {
+        /* Test that backspace at the beginning of a normal line, when there is a non-normal line before it, does nothing */
+        auto cm = new FakeContentMapper();
+        auto mcp = new FakeMergeResultContentProvider();
+        auto editor = new ContentEditor(mcp, cm);
+
+        mcp.content = [ tuple!("type", "text")(LineType.UNRESOLVED_CONFLICT, "\n"),
+                        tuple!("type", "text")(LineType.NORMAL, "def\n")];
+
+        editor.moveTo(Position(1, 0), false);
+        editor.backspace();
+
+        assertEqual(cm.mods, []);
+        assertEqual(editor.m_currentPos, Position(1, 0));
+    }
+
+    unittest
+    {
+        /* Test that backspace after a regular char deletes it and moves the cursor */
+        auto cm = new FakeContentMapper();
+        auto mcp = new FakeMergeResultContentProvider();
+        auto editor = new ContentEditor(mcp, cm);
+
+        mcp.content = [ tuple!("type", "text")(LineType.NORMAL, "abc\n") ];
+
+        editor.moveTo(Position(0, 3), false);
+        editor.backspace();
+
+        assertEqual(cm.mods, [Modification(0, 1, 1, ["ab\n"])]);
+        assertEqual(editor.m_currentPos, Position(0, 2));
+    }
+
+    unittest
+    {
+        setlocale(LC_ALL, "");
+
+        /* Test that backspace after a zero-width char does not move the cursor */
+        auto cm = new FakeContentMapper();
+        auto mcp = new FakeMergeResultContentProvider();
+        auto editor = new ContentEditor(mcp, cm);
+
+        string two_bytes_zero_columns = "\u0301"; // Unicode Character 'COMBINING ACUTE ACCENT' (U+0301)
+
+        mcp.content = [ tuple!("type", "text")(LineType.NORMAL, "abc" ~ two_bytes_zero_columns ~ "\n") ];
+
+        editor.moveTo(Position(0, 3), false);
+        editor.backspace();
+
+        assertEqual(cm.mods, [Modification(0, 1, 1, ["abc\n"])]);
+        assertEqual(editor.m_currentPos, Position(0, 3));
+    }
+
+    string two_bytes_zero_columns = "\u0301"; // Unicode Character 'COMBINING ACUTE ACCENT' (U+0301)
+
+
     void delete_()
     {
         if(m_selectionActive)
@@ -295,7 +509,7 @@ public:
             auto currentChar = originalLine.text.toStringColumns(m_currentPos.character).currentChar;
 
             /* Don't delete anything when we're in an uneditable line */
-            if(originalLine.type != MergeResultContentProvider.LineType.NORMAL)
+            if(originalLine.type != LineType.NORMAL)
             {
                 /* Do nothing */
                 applyModification = false;
@@ -314,7 +528,7 @@ public:
                 {
                     /* ... otherwise if the next line is not editable ... */
                     auto nextLine = m_mcp.getLineWithType(m_currentPos.line + 1);
-                    if(nextLine.type != MergeResultContentProvider.LineType.NORMAL)
+                    if(nextLine.type != LineType.NORMAL)
                     {
                         /* ... then refuse to delete the newline */
                         applyModification = false;
@@ -364,6 +578,47 @@ public:
         insertText(m_copyPasteBuffer);
     }
 }
+
+version(unittest)
+{
+    class FakeContentMapper: ContentMapper
+    {
+        Modification[] mods;
+
+        override void applyModification(Modification mod)
+        {
+            mods ~= mod;
+        }
+    }
+
+    class FakeMergeResultContentProvider: MergeResultContentProvider
+    {
+        Tuple!(LineType, "type", string, "text")[] content;
+
+        this()
+        {
+            super(null, null, null, null, null);
+        }
+
+        override Tuple!(LineType, "type", string, "text") getLineWithType(int lineNumber)
+        {
+            if(lineNumber < content.length)
+            {
+                return content[lineNumber];
+            }
+            else
+            {
+                return tuple!("type", "text")(LineType.NONE, "\n");
+            }
+        }
+
+        override int getContentHeight()
+        {
+            return to!int(content.length);
+        }
+    }
+}
+
 
 /+
 unittest
