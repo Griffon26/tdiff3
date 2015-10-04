@@ -33,6 +33,7 @@ import std.typecons;
 
 import common;
 import iformattedcontentprovider;
+import stringcolumns;
 
 /**
  * HighlightAddingContentProvider is an IFormattedContentProvider that
@@ -89,7 +90,7 @@ public:
 
         if(m_linesToHighlight.contains(line))
         {
-            int padding = to!int(m_originalContentProvider.getContentWidth() - text.lengthInColumns(true));
+            int padding = to!int(m_originalContentProvider.getContentWidth() - text.toStringColumns(0).lengthInColumns);
 
             log(format("lastLinePadding for line %d was %d", line, padding));
 

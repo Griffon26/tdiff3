@@ -26,17 +26,11 @@
 module common;
 
 import std.algorithm;
-import std.c.locale;
-import std.c.stddef;
 import std.container;
 import std.stdio;
-import std.string;
 import std.typecons;
-import std.utf;
 
 import myassert;
-
-extern (C) int wcwidth(wchar_t c);
 
 class UserException: Exception
 {
@@ -44,169 +38,6 @@ class UserException: Exception
     {
         super(msg, file, line, next);
     }
-}
-
-version(unittest)
-{
-    string one_byte_one_column = "a";
-    //dchar one_byte_two_columns = '';
-    string one_byte_eight_columns = "\t";
-    string two_bytes_one_column = "é";
-    //dchar two_bytes_two_columns = '';
-    string three_bytes_one_column = "€";
-    string three_bytes_two_columns = "\uFF04";   // full-width dollar sign
-    //dchar four_bytes_one_column = '';
-    string four_bytes_two_columns = "\U00020000";    // <CJK Ideograph Extension B, First>
-
-    // For the moment this is unprintable because glibc doesn't support it.
-    string four_bytes_unprintable = "\U0001F600";    // "GRINNING FACE"
-}
-
-int customWcWidth(wchar_t c, bool acceptUnprintable)
-{
-    auto width = (c == '\n') ? 1 : wcwidth(c);
-    if(c == '\t')
-    {
-        width = 8;
-    }
-    if(width == -1)
-    {
-        if(acceptUnprintable)
-        {
-            width = 1;
-        }
-        else
-        {
-            // TODO
-            assert(false);
-        }
-    }
-    return width;
-}
-
-/**
- * Return the length of a unicode string counted in the number of columns it will occupy when printed
- *
- * Params:
- *   s = a unicode string
- *   acceptUnprintable = whether to consider unprintable characters 1 column
- *                       wide or not. Currently no width is defined for
- *                       unprintable characters if this parameter is false, so
- *                       make sure not to call this function with
- *                       acceptUnprintable set to false on a string with
- *                       unprintable characters
- */
-int lengthInColumns(string s, bool acceptUnprintable)
-{
-    int nrOfColumns = 0;
-
-    validate(s);
-
-    foreach(dchar c; byDchar(s))
-    {
-        auto width = customWcWidth(c, acceptUnprintable);
-        if(c == '\t')
-        {
-            nrOfColumns = (nrOfColumns / 8 + 1) * 8;
-        }
-        else if(width != -1)
-        {
-            nrOfColumns += width;
-        }
-    }
-
-    return nrOfColumns;
-}
-
-unittest
-{
-    setlocale(LC_ALL, "");
-
-    assertEqual(lengthInColumns(one_byte_one_column, false), 1);
-    assertEqual(lengthInColumns(one_byte_eight_columns, false), 8);
-    assertEqual(lengthInColumns(two_bytes_one_column, false), 1);
-    assertEqual(lengthInColumns(three_bytes_one_column, false), 1);
-
-    assertEqual(lengthInColumns(three_bytes_two_columns, false), 2);
-    assertEqual(lengthInColumns(four_bytes_two_columns, false), 2);
-
-    assertEqual(lengthInColumns(four_bytes_unprintable, true), 1);
-}
-
-private size_t skipColumns(string s, size_t startIndex, int columnsToSkip, bool acceptUnprintable)
-{
-    while(columnsToSkip > 0)
-    {
-        dchar c = decode(s, startIndex);
-        auto width = customWcWidth(c, acceptUnprintable);
-        if(width != -1)
-        {
-            columnsToSkip -= width;
-        }
-    }
-    // TODO: fix this for chars that need multiple columns
-    assert(columnsToSkip == 0);
-
-    return startIndex;
-}
-
-unittest
-{
-    setlocale(LC_ALL, "");
-    assertEqual(skipColumns("." ~ one_byte_one_column ~ ".", 1, 1, true), 2);
-    // not yet supported
-    //assertEqual(skipColumns("." ~ one_byte_eight_columns ~ ".", 1, 1, true), 2);
-    assertEqual(skipColumns("." ~ two_bytes_one_column ~ ".", 1, 1, true), 3);
-    assertEqual(skipColumns("." ~ three_bytes_one_column ~ ".", 1, 1, true), 4);
-    // not yet supported
-    //assertEqual(skipColumns("." ~ three_bytes_two_columns ~ ".", 1, 1, true), 4);
-    //assertEqual(skipColumns("." ~ four_bytes_two_columns ~ ".", 1, 1, true), 5);
-    assertEqual(skipColumns("." ~ four_bytes_unprintable ~ ".", 1, 1, true), 5);
-
-    // Multi-column chars
-    assertEqual(skipColumns("." ~ one_byte_eight_columns ~ ".", 1, 8, true), 2);
-    assertEqual(skipColumns("." ~ three_bytes_two_columns ~ ".", 1, 2, true), 4);
-    assertEqual(skipColumns("." ~ four_bytes_two_columns ~ ".", 1, 2, true), 5);
-}
-
-/**
- * Return the substring starting at column startColumn and ending at endColumn
- */
-string substringColumns(string s, int startColumn, int endColumn, bool acceptUnprintable)
-{
-    size_t startIndex, endIndex;
-
-    startIndex = skipColumns(s, 0, startColumn, acceptUnprintable);
-    endIndex = skipColumns(s, startIndex, endColumn - startColumn, acceptUnprintable);
-
-    return s[startIndex..endIndex];
-}
-
-unittest
-{
-    setlocale(LC_ALL, "");
-
-    /* Test extracting a substring consisting of a unicode character */
-    assertEqual(substringColumns("." ~ one_byte_one_column ~ ".", 1, 2, false), one_byte_one_column);
-    assertEqual(substringColumns("." ~ one_byte_eight_columns ~ ".", 1, 9, false), one_byte_eight_columns);
-    assertEqual(substringColumns("." ~ two_bytes_one_column ~ ".", 1, 2, false), two_bytes_one_column);
-    assertEqual(substringColumns("." ~ three_bytes_one_column ~ ".", 1, 2, false), three_bytes_one_column);
-
-    assertEqual(substringColumns("." ~ three_bytes_two_columns ~ ".", 1, 3, false), three_bytes_two_columns);
-    assertEqual(substringColumns("." ~ four_bytes_two_columns ~ ".", 1, 3, false), four_bytes_two_columns);
-
-    assertEqual(substringColumns("." ~ four_bytes_unprintable ~ ".", 1, 2, true), four_bytes_unprintable);
-
-    /* Test extracting a substring following a unicode character */
-    assertEqual(substringColumns("." ~ one_byte_one_column ~ "a.", 2, 3, false), "a");
-    assertEqual(substringColumns("." ~ one_byte_eight_columns ~ "a.", 9, 10, false), "a");
-    assertEqual(substringColumns("." ~ two_bytes_one_column ~ "a.", 2, 3, false), "a");
-    assertEqual(substringColumns("." ~ three_bytes_one_column ~ "a.", 2, 3, false), "a");
-
-    assertEqual(substringColumns("." ~ three_bytes_two_columns ~ "a.", 3, 4, false), "a");
-    assertEqual(substringColumns("." ~ four_bytes_two_columns ~ "a.", 3, 4, false), "a");
-
-    assertEqual(substringColumns("." ~ four_bytes_unprintable ~ "a.", 2, 3, true), "a");
 }
 
 struct Diff

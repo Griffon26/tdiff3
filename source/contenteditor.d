@@ -31,6 +31,7 @@ import common;
 import contentmapper;
 import highlightaddingcontentprovider;
 import myassert;
+import stringcolumns;
 
 
 /**
@@ -190,36 +191,40 @@ public:
         switch(mv)
         {
         case Movement.RIGHT:
-            if(m_currentPos.character < m_mcp.get(m_currentPos.line).lengthInColumns(true) - 1)
+            auto currentChar = m_mcp.get(m_currentPos.line).toStringColumns(m_currentPos.character).currentChar;
+            if(currentChar.nextColumn !is null)
             {
-                newPos.character++;
+                newPos.character = currentChar.nextColumn.column;
             }
             break;
         case Movement.LEFT:
-            if(m_currentPos.character > 0)
+            auto currentChar = m_mcp.get(m_currentPos.line).toStringColumns(m_currentPos.character).currentChar;
+            if(currentChar.prevColumn !is null)
             {
-                newPos.character--;
+                newPos.character = currentChar.prevColumn.column;
             }
             break;
         case Movement.UP:
             if(m_currentPos.line > 0)
             {
                 newPos.line--;
-                newPos.character = min(newPos.character, m_mcp.get(newPos.line).lengthInColumns(true) - 1);
+                auto currentChar = m_mcp.get(newPos.line).toStringColumns(m_currentPos.character).currentChar;
+                newPos.character = currentChar.column;
             }
             break;
         case Movement.DOWN:
             if(m_currentPos.line < m_mcp.getContentHeight() - 1)
             {
                 newPos.line++;
-                newPos.character = min(newPos.character, m_mcp.get(newPos.line).lengthInColumns(true) - 1);
+                auto currentChar = m_mcp.get(newPos.line).toStringColumns(m_currentPos.character).currentChar;
+                newPos.character = currentChar.column;
             }
             break;
         case Movement.LINEHOME:
             newPos.character = 0;
             break;
         case Movement.LINEEND:
-            newPos.character = m_mcp.get(m_currentPos.line).lengthInColumns(true) - 1;
+            newPos.character = m_mcp.get(newPos.line).toStringColumns(m_currentPos.character).lastChar.column;
             break;
         case Movement.FILEHOME:
             newPos.character = 0;
@@ -329,14 +334,17 @@ public:
              * need to create an edited version of that line */
             if(firstPos.character != 0)
             {
-                modifiedLineAtBeginning = m_mcp.get(firstPos.line).substringColumns(0, firstPos.character, true);
+                auto originalLine = m_mcp.get(firstPos.line);
+                auto firstDeletedChar = originalLine.toStringColumns(firstPos.character).currentChar;
+                modifiedLineAtBeginning = originalLine[0..firstDeletedChar.index];
             }
 
             /* If the selection ends at the last position of a line, nothing remains to be added to the edited line */
-            auto lastLineColumns = m_mcp.get(lastPos.line).lengthInColumns(true);
-            if(lastPos.character != lastLineColumns - 1)
+            auto lastLine = m_mcp.get(lastPos.line);
+            auto lastDeletedChar = lastLine.toStringColumns(lastPos.character).currentChar;
+            if(lastDeletedChar.nextChar !is null)
             {
-                modifiedLineAtEnd = m_mcp.get(lastPos.line).substringColumns(lastPos.character + 1, lastLineColumns, true);
+                modifiedLineAtEnd = lastLine[lastDeletedChar.nextChar.index..$];
             }
 
             if(modifiedLineAtBeginning.length == 0 && modifiedLineAtEnd.length == 0)
@@ -366,18 +374,28 @@ public:
             mod.editedLineCount = 1;
 
             auto originalLine = m_mcp.get(m_currentPos.line);
-            auto originalLineColumns = originalLine.lengthInColumns(true);
 
-            if(m_currentPos.character == originalLineColumns - 1)
+            auto currentChar = originalLine.toStringColumns(m_currentPos.character).currentChar;
+            if(currentChar.nextChar is null)
             {
-                mod.lines = [ originalLine.substringColumns(0, m_currentPos.character, true) ~ m_mcp.get(m_currentPos.line + 1) ];
-                mod.originalLineCount = 2;
+                /* Avoid deletion of the last newline in the file */
+                if(m_currentPos.line != m_mcp.getContentHeight() - 1)
+                {
+                    mod.lines = [ originalLine[0..(currentChar.index)] ~ m_mcp.get(m_currentPos.line + 1) ];
+                    mod.originalLineCount = 2;
+                    m_contentMapper.applyModification(mod);
+                }
+                else
+                {
+                    /* Don't apply a modification if we've attempted to delete the newline of the last line */
+                }
             }
             else
             {
-                mod.lines = [ originalLine.substringColumns(0, m_currentPos.character, true) ~ originalLine.substringColumns(m_currentPos.character + 1, originalLineColumns, true) ];
+                mod.lines = [ originalLine[0..(currentChar.index)] ~ originalLine[(currentChar.nextChar.index)..$] ];
+                m_contentMapper.applyModification(mod);
             }
-            m_contentMapper.applyModification(mod);
+
         }
     }
     void insertText(string fragment)
