@@ -30,6 +30,7 @@ module diff;
 
 import std.algorithm;
 import std.array;
+import std.c.locale;
 import std.container;
 import std.conv;
 import std.math;
@@ -42,6 +43,7 @@ import std.utf;
 import common;
 import ilineprovider;
 import myassert;
+import unittestdata;
 
 void printDiff3List(Diff3LineList d3ll,
                     shared ILineProvider lpA,
@@ -1213,8 +1215,15 @@ DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
 {
     DiffList diffList;
 
-    auto r1 = array(line1);
-    auto r2 = array(line2);
+    auto line1array = array(cast(ubyte[])line1);
+    auto line2array = array(cast(ubyte[])line2);
+
+    /* TODO: this algorithm must be done char by char, but the count in the
+     * Diff's returned should be in bytes so it can be used for splicing the
+     * string */
+
+    auto r1 = line1array;
+    auto r2 = line2array;
 
     for(;;)
     {
@@ -1305,8 +1314,8 @@ DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
         // A different match could be achieved, if we start at the end.
         // Do it, if it would be a better match.
         int nofUnmatched = 0;
-        auto ru1 = array(line1)[0..$-r1.length];
-        auto ru2 = array(line2)[0..$-r2.length];
+        auto ru1 = line1array[0..$-r1.length];
+        auto ru2 = line2array[0..$-r2.length];
 
         while(!ru1.empty && !ru2.empty && ru1.back == ru2.back)
         {
@@ -1362,8 +1371,8 @@ DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
             else
             {
                 assert(nofUnmatched == 0);
-                r1 = array(line1)[ru1.length + nofUnmatched..$];
-                r2 = array(line2)[ru2.length + nofUnmatched..$];
+                r1 = line1array[ru1.length + nofUnmatched..$];
+                r2 = line2array[ru2.length + nofUnmatched..$];
                 diffList.insertBack(d);
             }
         }
@@ -1374,7 +1383,7 @@ DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
         }
     }
 
-    verifyDiffList(diffList, cast(int)array(line1).length, cast(int)array(line2).length);
+    verifyDiffList(diffList, cast(int)line1array.length, cast(int)line2array.length);
 
     return diffList;
 }
@@ -1383,7 +1392,6 @@ DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
 
 unittest
 {
-
     Diff[] mirrorDiffArray(Diff[] diffArray)
     {
         Diff[] mirroredArray = diffArray.dup;
@@ -1466,9 +1474,9 @@ unittest
     testCalcDiffIncludingMirrored("match_tch", "match", 2, 500, [Diff(5,4,0)]);
     testCalcDiffIncludingMirrored("match_______tch", "match", 2, 500, [Diff(5,10,0)]);
 
-    testCalcDiffIncludingMirrored("παρ", "παρ", 2, 500, [Diff(3, 0, 0)]);
-    testCalcDiffIncludingMirrored("ｔｅｒ", "ｔｅｒ", 2, 500, [Diff(3, 0, 0)]);
-    testCalcDiffIncludingMirrored("ｅｒ", "ｔｅｒ", 2, 500, [Diff(0, 0, 1), Diff(2, 0, 0)]);
+    testCalcDiffIncludingMirrored("παρ", "παρ", 2, 500, [Diff(6, 0, 0)]);
+    testCalcDiffIncludingMirrored("ｔｅｒ", "ｔｅｒ", 2, 500, [Diff(9, 0, 0)]);
+    testCalcDiffIncludingMirrored("ｅｒ", "ｔｅｒ", 2, 500, [Diff(0, 0, 3), Diff(6, 0, 0)]);
 }
 
 static void verifyDiffList(DiffList diffList, int size1, int size2)
@@ -1547,6 +1555,27 @@ DiffList fineDiff(int k1,
     }
 
     return diffList;
+}
+
+unittest
+{
+    setlocale(LC_ALL, "");
+
+    assertEqual(array(fineDiff(0, 0, "same_", "same_")), [Diff(5,0,0)]);
+    assertEqual(array(fineDiff(0, 0, "same_a", "same_b")), [Diff(5,1,1)]);
+    assertEqual(array(fineDiff(0, 0, "same_a", "same_bc")), [Diff(5,1,2)]);
+
+    string four_bytes_two_columns = "\U00020000";    // <CJK Ideograph Extension B, First>
+    string four_bytes_unprintable = "\U0001F600";    // "GRINNING FACE"
+
+
+    assertEqual(array(fineDiff(0, 0, "same" ~ two_bytes_one_column, "same")), [Diff(4,2,0)]);
+    assertEqual(array(fineDiff(0, 0, "same" ~ three_bytes_one_column, "same")), [Diff(4,3,0)]);
+    assertEqual(array(fineDiff(0, 0, "same" ~ three_bytes_two_columns, "same")), [Diff(4,3,0)]);
+
+    assertEqual(array(fineDiff(0, 0, "ae" ~ two_bytes_zero_columns ~ "\n", "ae\n")), [Diff(0,4,2), Diff(1,0,0)]);
+    assertEqual(array(fineDiff(0, -1, "ae" ~ two_bytes_zero_columns ~ "\n", "")), [Diff(0,5,0)]);
+    assertEqual(array(fineDiff(0, -1, "ae\n", "")), [Diff(0,3,0)]);
 }
 
 
@@ -1804,7 +1833,7 @@ void determineFineDiffStylePerLine(ref Diff3Line d3l,
                                    shared ILineProvider lpC)
 {
     auto fineDiffAB = fineDiff(d3l.line(0),
-                               d3l.line(1), 
+                               d3l.line(1),
                                (d3l.line(0) == -1) ? "" : lpA.get(d3l.line(0)),
                                (d3l.line(1) == -1) ? "" : lpB.get(d3l.line(1)));
     auto fineDiffAC = fineDiff(d3l.line(0),

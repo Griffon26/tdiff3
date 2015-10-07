@@ -35,6 +35,7 @@ import contentmapper;
 import mergeresultcontentprovider;
 import myassert;
 import stringcolumns;
+import unittestdata;
 
 
 /**
@@ -432,8 +433,6 @@ public:
         auto mcp = new FakeMergeResultContentProvider();
         auto editor = new ContentEditor(mcp, cm);
 
-        string two_bytes_zero_columns = "\u0301"; // Unicode Character 'COMBINING ACUTE ACCENT' (U+0301)
-
         mcp.content = [ tuple!("type", "text")(LineType.NORMAL, "abc" ~ two_bytes_zero_columns ~ "\n") ];
 
         editor.moveTo(Position(0, 3), false);
@@ -442,9 +441,6 @@ public:
         assertEqual(cm.mods, [Modification(0, 1, 1, ["abc\n"])]);
         assertEqual(editor.m_currentPos, Position(0, 3));
     }
-
-    string two_bytes_zero_columns = "\u0301"; // Unicode Character 'COMBINING ACUTE ACCENT' (U+0301)
-
 
     void delete_()
     {
