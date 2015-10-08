@@ -385,6 +385,9 @@ public:
                 case TermKeySym.DELETE:
                     m_editor.delete_();
                     break;
+                case TermKeySym.TAB:
+                    keyWasIgnored = !m_editor.insertText("\t");
+                    break;
                 default:
                     keyWasIgnored = true;
                     break;

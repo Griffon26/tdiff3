@@ -586,6 +586,9 @@ public:
             mod.lines = [ line.text[0..currentChar.index] ~ text ~ line.text[currentChar.index..$] ];
             m_contentMapper.applyModification(mod);
 
+            /* Read back the modified line */
+            line = m_mcp.getLineWithType(m_currentPos.line);
+
             auto nextChar = line.text.toStringColumns(m_currentPos.character).currentChar.nextChar;
             m_currentPos.character = nextChar.column;
 
