@@ -143,6 +143,7 @@ public:
      * Constructor that creates a doubly linked list of CharInfo objects.
      * 
      * Params:
+     *   s      = the string to parse into a list of CharInfo objects
      *   column = the column position of interest. After construction
      *            currentChar will return the CharInfo corresponding to the
      *            first character in the specified column. Consider specifying
@@ -362,6 +363,7 @@ public:
  * UFCS it can be called like a method on a string.
  *
  * Params:
+ *   s      = the string to parse into a list of CharInfo objects
  *   column = the column position of interest. If the StringColumns instance is
  *   to be used to request information or navigate from a character at a
  *   certain column position, then specifying this position in this function

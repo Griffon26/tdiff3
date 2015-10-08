@@ -65,6 +65,15 @@ private:
     bool m_selectionActive;
     Position m_selectionBegin;
     Position m_currentPos; /* also the end of the selection */
+    /**
+     * The preferred column stores the x position of the cursor after every
+     * horizontal movement of the cursor.  When moving the cursor vertically
+     * the cursor is positioned as close to the preferred column as the length
+     * of the current line will allow. This allows one to move from one long
+     * line over empty lines to another long line without losing the horizontal
+     * cursor position.
+     */
+    int m_preferredColumn;
 
     string m_copyPasteBuffer;
     MergeResultContentProvider m_mcp;
@@ -132,6 +141,7 @@ public:
             if(currentChar.nextColumn !is null)
             {
                 newPos.character = currentChar.nextColumn.column;
+                m_preferredColumn = newPos.character;
             }
             break;
         case Movement.LEFT:
@@ -139,13 +149,14 @@ public:
             if(currentChar.prevColumn !is null)
             {
                 newPos.character = currentChar.prevColumn.column;
+                m_preferredColumn = newPos.character;
             }
             break;
         case Movement.UP:
             if(m_currentPos.line > 0)
             {
                 newPos.line--;
-                auto currentChar = m_mcp.getLineWithType(newPos.line).text.toStringColumns(m_currentPos.character).currentChar;
+                auto currentChar = m_mcp.getLineWithType(newPos.line).text.toStringColumns(m_preferredColumn).currentChar;
                 newPos.character = currentChar.column;
             }
             break;
@@ -153,23 +164,27 @@ public:
             if(m_currentPos.line < m_mcp.getContentHeight() - 1)
             {
                 newPos.line++;
-                auto currentChar = m_mcp.getLineWithType(newPos.line).text.toStringColumns(m_currentPos.character).currentChar;
+                auto currentChar = m_mcp.getLineWithType(newPos.line).text.toStringColumns(m_preferredColumn).currentChar;
                 newPos.character = currentChar.column;
             }
             break;
         case Movement.LINEHOME:
             newPos.character = 0;
+            m_preferredColumn = newPos.character;
             break;
         case Movement.LINEEND:
             newPos.character = m_mcp.getLineWithType(newPos.line).text.toStringColumns(m_currentPos.character).lastChar.column;
+            m_preferredColumn = newPos.character;
             break;
         case Movement.FILEHOME:
             newPos.character = 0;
             newPos.line = 0;
+            m_preferredColumn = newPos.character;
             break;
         case Movement.FILEEND:
             newPos.character = 0;
             newPos.line = m_mcp.getContentHeight() - 1;
+            m_preferredColumn = newPos.character;
             break;
         default:
             assert(false);
@@ -191,9 +206,13 @@ public:
         {
         case Movement.UP:
             newPos.line = max(0, m_currentPos.line - distance);
+            auto currentChar = m_mcp.getLineWithType(newPos.line).text.toStringColumns(m_preferredColumn).currentChar;
+            newPos.character = currentChar.column;
             break;
         case Movement.DOWN:
             newPos.line = min(m_mcp.getContentHeight() - 1, m_currentPos.line + distance);
+            auto currentChar = m_mcp.getLineWithType(newPos.line).text.toStringColumns(m_preferredColumn).currentChar;
+            newPos.character = currentChar.column;
             break;
         default:
             assert(false);
