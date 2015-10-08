@@ -90,6 +90,8 @@ public:
         }
     }
 
+    @property int height() { return m_inputPanes[0].height; }
+
     void setPosition(int x, int y, int width, int height)
     {
         /* Draw a box around the input panes */

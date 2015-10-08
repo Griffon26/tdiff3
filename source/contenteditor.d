@@ -570,15 +570,30 @@ public:
 
         }
     }
-    void insertText(string fragment)
+    bool insertText(string text)
     {
-        auto mod = Modification();
-        mod.firstLine = m_currentPos.line;
-        mod.originalLineCount = 1;
-        mod.editedLineCount = 1;
-        mod.lines = [fragment];
-        m_contentMapper.applyModification(mod);
+        bool textInserted = false;
+
+        auto line = m_mcp.getLineWithType(m_currentPos.line);
+        if(line.type == LineType.NORMAL || line.type == LineType.NO_SOURCE_LINE)
+        {
+            auto currentChar = line.text.toStringColumns(m_currentPos.character).currentChar;
+
+            auto mod = Modification();
+            mod.firstLine = m_currentPos.line;
+            mod.originalLineCount = 1;
+            mod.editedLineCount = 1;
+            mod.lines = [ line.text[0..currentChar.index] ~ text ~ line.text[currentChar.index..$] ];
+            m_contentMapper.applyModification(mod);
+
+            auto nextChar = line.text.toStringColumns(m_currentPos.character).currentChar.nextChar;
+            m_currentPos.character = nextChar.column;
+
+            textInserted = true;
+        }
+        return textInserted;
     }
+
     void cut()
     {
         copy();

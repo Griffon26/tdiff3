@@ -348,24 +348,8 @@ public:
         {
             if(key.type == TermKeyType.UNICODE)
             {
-                switch(key.code.codepoint)
-                {
-                case 'j':
-                    m_inputPanes.scrollY(1);
-                    break;
-                case 'i':
-                    m_inputPanes.scrollY(-1);
-                    break;
-                case 'k':
-                    m_inputPanes.scrollX(-1);
-                    break;
-                case 'l':
-                    m_inputPanes.scrollX(1);
-                    break;
-                default:
-                    keyWasIgnored = true;
-                    break;
-                }
+                dchar c = to!dchar(key.code.codepoint);
+                keyWasIgnored = !m_editor.insertText(to!string(c));
             }
             else if(key.type == TermKeyType.KEYSYM)
             {
@@ -473,6 +457,24 @@ public:
                 case TermKeySym.END:
                     m_editor.move(ContentEditor.Movement.FILEEND, false);
                     break;
+                case TermKeySym.DOWN:
+                    m_inputPanes.scrollY(1);
+                    break;
+                case TermKeySym.UP:
+                    m_inputPanes.scrollY(-1);
+                    break;
+                case TermKeySym.LEFT:
+                    m_inputPanes.scrollX(-1);
+                    break;
+                case TermKeySym.RIGHT:
+                    m_inputPanes.scrollX(1);
+                    break;
+                case TermKeySym.PAGEUP:
+                    m_inputPanes.scrollY(-m_inputPanes.height);
+                    break;
+                case TermKeySym.PAGEDOWN:
+                    m_inputPanes.scrollY(m_inputPanes.height);
+                    break;
                 default:
                     keyWasIgnored = true;
                     break;
@@ -497,7 +499,7 @@ public:
         TermKeyKey key;
 
         while( ((ret = termkey_waitkey(tk, &key)) != TermKeyResult.EOF) &&
-               !isKey(key, 0, 'q') )
+               !isKey(key, TermKeyKeyMod.CTRL, 'q') )
         {
             if(ret == TermKeyResult.ERROR)
             {
