@@ -491,7 +491,7 @@ public:
 
     override void toggle(LineSource lineSource)
     {
-        // throw away all modifications
+        m_modifications.clear();
         super.toggle(lineSource);
     }
 
