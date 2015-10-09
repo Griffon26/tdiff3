@@ -33,7 +33,6 @@ import std.stdio;
 import std.typecons;
 
 import ilineprovider;
-import stringcolumns;
 
 /**
  * This is a temporary implementation of a line provider that reads lines from a file.
@@ -97,7 +96,11 @@ synchronized class SimpleFileLineProvider: ILineProvider
                 lastpos = to!int(content.length);
                 break;
             }
-            m_maxWidth = max(m_maxWidth, lines[i].toStringColumns(0).lengthInColumns);
+            /* The maximum number of columns taken up by an utf-8 string is
+             * equal to the length in bytes, because each one byte char takes
+             * up 1 column and all characters of 2 bytes or more take up at
+             * most 2. */
+            m_maxWidth = max(m_maxWidth, to!int(lines[i].length));
         }
 
         /* line storage shouldn't be larger than the number of lines in the content */
