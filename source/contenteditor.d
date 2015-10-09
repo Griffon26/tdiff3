@@ -338,6 +338,7 @@ public:
             if(applyModification)
             {
                 m_contentMapper.applyModification(mod);
+                m_preferredColumn = m_currentPos.character;
             }
         }
     }
@@ -570,6 +571,29 @@ public:
 
         }
     }
+    bool enter()
+    {
+        bool textInserted = false;
+
+        auto line = m_mcp.getLineWithType(m_currentPos.line);
+        if(line.type == LineType.NORMAL || line.type == LineType.NO_SOURCE_LINE)
+        {
+            auto currentChar = line.text.toStringColumns(m_currentPos.character).currentChar;
+
+            auto mod = Modification();
+            mod.firstLine = m_currentPos.line;
+            mod.originalLineCount = 1;
+            mod.editedLineCount = 2;
+            mod.lines = [ line.text[0..currentChar.index] ~ "\n", line.text[currentChar.index..$] ];
+            m_contentMapper.applyModification(mod);
+
+            m_currentPos.line++;
+            m_preferredColumn = m_currentPos.character = 0;
+
+            textInserted = true;
+        }
+        return textInserted;
+    }
     bool insertText(string text)
     {
         bool textInserted = false;
@@ -590,7 +614,7 @@ public:
             line = m_mcp.getLineWithType(m_currentPos.line);
 
             auto nextChar = line.text.toStringColumns(m_currentPos.character).currentChar.nextChar;
-            m_currentPos.character = nextChar.column;
+            m_preferredColumn = m_currentPos.character = nextChar.column;
 
             textInserted = true;
         }

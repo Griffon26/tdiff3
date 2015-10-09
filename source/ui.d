@@ -388,6 +388,9 @@ public:
                 case TermKeySym.TAB:
                     keyWasIgnored = !m_editor.insertText("\t");
                     break;
+                case TermKeySym.ENTER:
+                    keyWasIgnored = !m_editor.enter();
+                    break;
                 default:
                     keyWasIgnored = true;
                     break;

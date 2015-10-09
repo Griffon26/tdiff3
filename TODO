@@ -6,7 +6,6 @@ An incomplete list of what is still to be done:
 - add scrollbar (read-only, just to show where you are in the file)
 
 support keys:
-- enter
 - ctrl-c/ctrl-v -> copy/paste
 - ctrl-insert/shift-insert -> copy/paste
 
@@ -16,9 +15,6 @@ selection keys
 - shift-home/end -> select to beginning/end of line
 - ctrl-shift-home/end -> select to beginning/end of file
 - shift-page up/down -> select to prev/next page
-
-- implement memory/file storage for editable window
-  - only store edits wrt the original content
 
 - graceful degradation of colors
   rxvt-unicode: 88, changeable
