@@ -82,7 +82,7 @@ import icontentprovider;
 import iformattedcontentprovider;
 import linenumbercontentprovider;
 import mergeresultcontentprovider;
-import simplefilelineprovider;
+import mmappedfilelineprovider;
 import ui;
 
 void main(string[] args)
@@ -123,10 +123,10 @@ void main(string[] args)
 
     const int count = 3;
 
-    SimpleFileLineProvider[count] lps;
-    lps[0] = new SimpleFileLineProvider(inputFileNames[0]);
-    lps[1] = new SimpleFileLineProvider(inputFileNames[1]);
-    lps[2] = new SimpleFileLineProvider(inputFileNames[2]);
+    MmappedFileLineProvider[count] lps;
+    lps[0] = new MmappedFileLineProvider(inputFileNames[0]);
+    lps[1] = new MmappedFileLineProvider(inputFileNames[1]);
+    lps[2] = new MmappedFileLineProvider(inputFileNames[2]);
 
     GnuDiff gnuDiff = new GnuDiff("/tmp");
     gnuDiff.setFile(0, lps[0]);

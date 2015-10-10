@@ -55,7 +55,7 @@ public:
 
     void write()
     {
-        immutable int linesPerIteration = 100;
+        immutable int linesPerIteration = 10000;
 
         if(m_bytesWritten == m_buffer.length)
         {

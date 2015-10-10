@@ -30,7 +30,6 @@ selection keys
 - add configuration file and settings dialog
   - kdiff3's settings: tab inserts spaces, tab size, auto indentation
 
-- implement mmap for input file reading
 - implement decoding filter for non-utf8 input files
 
 The following features will follow when requested
