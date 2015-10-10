@@ -64,7 +64,7 @@ private:
 
     int m_lineNumberWidth;
 
-    int scrollBarWidth = 1;
+    int scrollBarWidth = 0;
     int borderWidth = 1;
     int diffStatusWidth = 1;
     int nrOfPanes = 3;
@@ -135,6 +135,7 @@ public:
 
             remainingPaneWidth -= paneWidth;
         }
+        assert(remainingPaneWidth == 0);
     }
 
     void scrollX(int n)
