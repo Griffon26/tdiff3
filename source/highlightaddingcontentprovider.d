@@ -90,19 +90,26 @@ public:
 
         if(m_linesToHighlight.contains(line))
         {
-            int padding = to!int(m_originalContentProvider.getContentWidth() - text.toStringColumns(0).lengthInColumns);
+            int length = text.toStringColumns(0).lengthInColumns;
+            int width = m_originalContentProvider.getContentWidth();
 
-            log(format("lastLinePadding for line %d was %d", line, padding));
+            if(width > length)
+            {
+                int padding = width - length;
 
-            char[] restOfLine;
-            restOfLine.length = padding;
-            restOfLine[] = ' ';
+                log(format("contentwidth %d, lengthInColumns %d", width, length));
+                log(format("lastLinePadding for line %d [%s] was %d", line, text, padding));
 
-            m_lastLineLength += padding;
+                char[] restOfLine;
+                restOfLine.length = padding;
+                restOfLine[] = ' ';
 
-            string result = (text[0..$-1] ~ restOfLine ~ text[$-1..$]).idup;
-            //string result = text;
-            originalLine = result;
+                m_lastLineLength += padding;
+
+                string result = (text[0..$-1] ~ restOfLine ~ text[$-1..$]).idup;
+                //string result = text;
+                originalLine = result;
+            }
         }
 
         return originalLine;

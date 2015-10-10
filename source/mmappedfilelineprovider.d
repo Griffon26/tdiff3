@@ -64,6 +64,19 @@ public:
         m_filename = filename;
     }
 
+    private ulong countTabs(ubyte *from, ubyte *to)
+    {
+        int count = 0;
+        for(ubyte *pChar = from; pChar < to; pChar++)
+        {
+            if(*pChar == '\t')
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
     private void ensure_line_is_available(int index)
     {
         /* index already accessible */
@@ -96,12 +109,14 @@ public:
             ubyte *pNewLine = cast(ubyte *)memchr(pStart, '\n', restOfFile.length);
             ulong lineLength = (pNewLine == null) ? restOfFile.length : pNewLine - pStart + 1;
             lastpos = lastpos + lineLength;
-
             m_lineEnds[i] = lastpos;
 
-            if(lineLength > m_maxWidth)
+            ulong maxWidth = countTabs(pStart, pNewLine) * 7 + lineLength;
+
+            /* TODO: replace this with StringColumns once it has been optimized enough */
+            if(maxWidth > m_maxWidth)
             {
-                m_maxWidth = to!int(lineLength);
+                m_maxWidth = to!int(maxWidth);
             }
 
             //writefln("Line %d is %s", i, m_file[lineStart..m_lineEnds[i]]);
