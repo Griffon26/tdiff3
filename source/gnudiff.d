@@ -25,16 +25,17 @@
  */
 module gnudiff;
 
-import std.algorithm;
-import std.array;
-import std.concurrency;
 import std.conv;
 import std.exception;
 import std.process;
 import std.regex;
 import std.stdio;
 import std.string;
-import std.traits;
+
+import core.stdc.errno;
+import core.sys.posix.fcntl;
+import core.sys.posix.poll;
+import core.sys.posix.unistd;
 
 import common;
 import fifowriter;
@@ -48,40 +49,30 @@ const uint MAX_NR_OF_FILES = 3;
  * GnuDiff performs a _diff between the data from two ILineProviders. It does
  * this by spawning an external _diff process and having it read from named
  * pipes that two FifoWriters will be writing to.
- * The FifoWriters each spawn a thread, requiring the ILineProviders to be
- * shared.
  */
 class GnuDiff
 {
-    private string m_tempdir;
-    private FifoWriter[MAX_NR_OF_FILES] m_fifoWriters;
-    private shared ILineProvider[MAX_NR_OF_FILES] m_lineProviders;
+private:
+    string m_tempdir;
+    ILineProvider[MAX_NR_OF_FILES] m_lineProviders;
 
+public:
     this(string tempdir)
     {
         m_tempdir = tempdir;
     }
 
-    void setFile(uint n, shared ILineProvider lp)
+    void setFile(uint n, ILineProvider lp)
     {
         assert(n < MAX_NR_OF_FILES);
 
         m_lineProviders[n] = lp;
-
-        auto fifoName = getFifoName(n);
-
-        /* Attempt to remove fifos if they were left behind by a previous run of this function */
-        if(std.file.exists(fifoName)) removeFifo(fifoName);
-
-        createFifo(fifoName);
-        m_fifoWriters[n] = new FifoWriter(lp, fifoName);
     }
 
     void cleanup()
     {
         for(int index = 0; index < MAX_NR_OF_FILES; index++)
         {
-            m_fifoWriters[index].exit();
             removeFifo(getFifoName(index));
         }
     }
@@ -300,23 +291,74 @@ class GnuDiff
         assertEqual(l2, size2);
     }
 
-
     private string diff_2_files(uint n1, uint n2,
                                 int firstLine1, int lastLine1,
                                 int firstLine2, int lastLine2)
     {
-        m_fifoWriters[n1].start(firstLine1, lastLine1);
-        m_fifoWriters[n2].start(firstLine2, lastLine2);
+        auto fifoName1 = getFifoName(n1);
+        auto fifoName2 = getFifoName(n2);
+        recreateFifo(fifoName1);
+        recreateFifo(fifoName2);
 
-        auto diff = executeShell(format("diff %s %s | grep -v '^[<>-]'", getFifoName(n1), getFifoName(n2)));
-        enforce(diff.status != 2, "Diff failed");
+        auto diff = pipeShell(format("diff %s %s | grep -v '^[<>-]'", fifoName1, fifoName2), Redirect.stdout);
 
-        m_fifoWriters[n1].wait();
-        m_fifoWriters[n2].wait();
+        auto inputFifo1 = open(fifoName1.toStringz, O_WRONLY);
+        fcntl(inputFifo1, F_SETFL, O_NONBLOCK);
 
-        return diff.output;
+        auto inputFifo2 = open(fifoName2.toStringz, O_WRONLY);
+        fcntl(inputFifo2, F_SETFL, O_NONBLOCK);
+
+        auto outputFifo = diff.stdout.fileno;
+
+        pollfd[3] pollFifos = [ { fd: inputFifo1, events: POLLOUT },
+                                { fd: inputFifo2, events: POLLOUT },
+                                { fd: outputFifo, events: POLLIN  } ];
+        FifoWriter[] writers = [ new FifoWriter(m_lineProviders[n1], inputFifo1),
+                                 new FifoWriter(m_lineProviders[n2], inputFifo2) ];
+        FifoReader reader = new FifoReader(outputFifo);
+
+        bool done = false;
+        while(!writers[0].eof() ||
+              !writers[1].eof() ||
+              !reader.eof() )
+        {
+            poll(&pollFifos[0], 3, -1);
+
+            foreach(i; 0..2)
+            {
+                if(pollFifos[i].revents)
+                {
+                    writers[i].write();
+                    if(writers[i].eof())
+                    {
+                        close(pollFifos[i].fd);
+                        pollFifos[i].fd = -1;
+                    }
+                }
+            }
+
+            if(pollFifos[2].revents)
+            {
+                reader.read();
+            }
+        }
+
+        assert(writers[0].eof() && writers[1].eof());
+
+        auto status = wait(diff.pid);
+        enforce(status != 2, "Diff failed");
+
+        return reader.getText();
     }
 
+    private void recreateFifo(string pathToFifo)
+    {
+        if(std.file.exists(pathToFifo))
+        {
+            removeFifo(pathToFifo);
+        }
+        createFifo(pathToFifo);
+    }
     private void createFifo(string pathToFifo)
     {
         auto mkfifo = execute(["mkfifo", "-m", "0600", pathToFifo]);

@@ -46,9 +46,9 @@ import myassert;
 import unittestdata;
 
 void printDiff3List(Diff3LineList d3ll,
-                    shared ILineProvider lpA,
-                    shared ILineProvider lpB,
-                    shared ILineProvider lpC)
+                    ILineProvider lpA,
+                    ILineProvider lpB,
+                    ILineProvider lpC)
 {
     const int columnsize = 30;
     const int linenumsize = 6;
@@ -57,7 +57,7 @@ void printDiff3List(Diff3LineList d3ll,
         string lineAText, lineBText, lineCText;
         if(d3l.lineA != -1)
         {
-            lineAText = format("%6.6d %-30.30s", d3l.lineA, lpA.get(d3l.lineA).get().replace("\n", "\\n"));
+            lineAText = format("%6.6d %-30.30s", d3l.lineA, lpA.get(d3l.lineA).text.replace("\n", "\\n"));
         }
         else
         {
@@ -65,7 +65,7 @@ void printDiff3List(Diff3LineList d3ll,
         }
         if(d3l.lineB != -1)
         {
-            lineBText = format("%6.6d %-30.30s", d3l.lineB, lpB.get(d3l.lineB).get().replace("\n", "\\n"));
+            lineBText = format("%6.6d %-30.30s", d3l.lineB, lpB.get(d3l.lineB).text.replace("\n", "\\n"));
         }
         else
         {
@@ -73,7 +73,7 @@ void printDiff3List(Diff3LineList d3ll,
         }
         if(d3l.lineC != -1)
         {
-            lineCText = format("%6.6d %-30.30s", d3l.lineC, lpC.get(d3l.lineC).get().replace("\n", "\\n"));
+            lineCText = format("%6.6d %-30.30s", d3l.lineC, lpC.get(d3l.lineC).text.replace("\n", "\\n"));
         }
         else
         {
@@ -893,9 +893,9 @@ Diff3LineList calcDiff3LineList(DiffList diffList12, DiffList diffList13, DiffLi
 }
 
 void trimDiff3LineList(ref Diff3LineList d3ll,
-                       shared ILineProvider lpA,
-                       shared ILineProvider lpB,
-                       shared ILineProvider lpC)
+                       ILineProvider lpA,
+                       ILineProvider lpB,
+                       ILineProvider lpC)
 {
     auto r3 = d3ll[];
     auto r3a = d3ll[];
@@ -1151,11 +1151,6 @@ void trimDiff3LineList(ref Diff3LineList d3ll,
 
 }
 
-version(unittest)
-{
-    auto lp = new shared FakeLineProvider();
-}
-
 unittest
 {
     /* Check if lines from A are compacted in the simplest case */
@@ -1166,6 +1161,8 @@ unittest
                                           tuple(false, false, false, -1, -1, -1),
                                           tuple(false, false, false,  1, -1, -1),
                                           ]);
+    auto lp = new FakeLineProvider();
+
     trimDiff3LineList(d3ll, lp, lp, lp);
 
     auto d3ltuples = d3ll.toTuples;
@@ -1184,6 +1181,8 @@ unittest
                                           tuple(false, false, false, -1, -1, -1),
                                           tuple(false, false, false, -1,  1, -1),
                                           ]);
+    auto lp = new FakeLineProvider();
+
     trimDiff3LineList(d3ll, lp, lp, lp);
 
     auto d3ltuples = d3ll.toTuples;
@@ -1202,6 +1201,8 @@ unittest
                                           tuple(false, false, false, -1, -1, -1),
                                           tuple(false, false, false, -1, -1,  1),
                                           ]);
+    auto lp = new FakeLineProvider();
+
     trimDiff3LineList(d3ll, lp, lp, lp);
 
     auto d3ltuples = d3ll.toTuples;
@@ -1828,22 +1829,22 @@ unittest
 }
 
 void determineFineDiffStylePerLine(ref Diff3Line d3l,
-                                   shared ILineProvider lpA,
-                                   shared ILineProvider lpB,
-                                   shared ILineProvider lpC)
+                                   ILineProvider lpA,
+                                   ILineProvider lpB,
+                                   ILineProvider lpC)
 {
     auto fineDiffAB = fineDiff(d3l.line(0),
                                d3l.line(1),
-                               (d3l.line(0) == -1) ? "" : lpA.get(d3l.line(0)),
-                               (d3l.line(1) == -1) ? "" : lpB.get(d3l.line(1)));
+                               (d3l.line(0) == -1) ? "" : lpA.get(d3l.line(0)).text,
+                               (d3l.line(1) == -1) ? "" : lpB.get(d3l.line(1)).text);
     auto fineDiffAC = fineDiff(d3l.line(0),
                                d3l.line(2),
-                               (d3l.line(0) == -1) ? "" : lpA.get(d3l.line(0)),
-                               (d3l.line(2) == -1) ? "" : lpC.get(d3l.line(2)));
+                               (d3l.line(0) == -1) ? "" : lpA.get(d3l.line(0)).text,
+                               (d3l.line(2) == -1) ? "" : lpC.get(d3l.line(2)).text);
     auto fineDiffBC = fineDiff(d3l.line(1),
                                d3l.line(2),
-                               (d3l.line(1) == -1) ? "" : lpB.get(d3l.line(1)),
-                               (d3l.line(2) == -1) ? "" : lpC.get(d3l.line(2)));
+                               (d3l.line(1) == -1) ? "" : lpB.get(d3l.line(1)).text,
+                               (d3l.line(2) == -1) ? "" : lpC.get(d3l.line(2)).text);
 
     DiffListIterator it1, it2;
 
@@ -1862,9 +1863,9 @@ void determineFineDiffStylePerLine(ref Diff3Line d3l,
 
 
 void determineFineDiffStyle(Diff3LineList diff3LineList,
-                            shared ILineProvider lpA,
-                            shared ILineProvider lpB,
-                            shared ILineProvider lpC)
+                            ILineProvider lpA,
+                            ILineProvider lpB,
+                            ILineProvider lpC)
 {
     foreach(ref d3l; diff3LineList)
     {

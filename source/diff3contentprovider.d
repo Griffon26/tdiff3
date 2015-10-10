@@ -42,9 +42,9 @@ class Diff3ContentProvider: IFormattedContentProvider
     int m_contentHeight;
     Diff3LineArray m_d3la;
     int m_fileIndex;
-    shared ILineProvider m_lp;
+    ILineProvider m_lp;
 
-    this(int contentWidth, int contentHeight, Diff3LineArray d3la, int fileIndex, shared ILineProvider lp)
+    this(int contentWidth, int contentHeight, Diff3LineArray d3la, int fileIndex, ILineProvider lp)
     {
         m_contentWidth = contentWidth;
         m_contentHeight = contentHeight;
@@ -75,7 +75,7 @@ class Diff3ContentProvider: IFormattedContentProvider
         }
         else
         {
-            result = m_lp.get(fileLine);
+            result = m_lp.get(fileLine).text;
         }
         return result;
     }

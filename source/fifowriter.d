@@ -25,127 +25,98 @@
  */
 module fifowriter;
 
-import core.thread;
-import std.algorithm;
-import std.concurrency;
+import core.sys.posix.unistd;
+import std.conv;
 import std.stdio;
 
 import ilineprovider;
 
-const bool logging = false;
-
-string MSG_DUMP_LINE_CACHE = "dumpLineCache";
-string MSG_EXIT = "exit";
-string MSG_DONE = "done";
-
-struct StartMessage
-{
-    uint firstLine;
-    uint lastLine;
-}
-
-struct DoneMessage
-{
-}
-
-struct ExitMessage
-{
-}
-
 /**
- * FifoWriter allows writing from an ILineProvider to a fifo from a separate
- * thread.
+ * FifoWriter allows block-wise writing of data from an ILineProvider to a
+ * specified file descriptor. In order to write all data the write function
+ * must be called in a loop until the eof function returns true.
  */
 class FifoWriter
 {
-    private Tid m_tid;
+private:
+    ILineProvider m_lp;
+    int m_fifoFd;
+    string m_buffer;
+    int m_linesRead;
+    long m_bytesWritten;
+    bool m_lastLineRead;
 
-    this(shared ILineProvider lp, string pathToFifo)
+public:
+    this(ILineProvider lp, int fifoFd)
     {
-        m_tid = spawn(&_threadFunc, lp, pathToFifo);
+        m_lp = lp;
+        m_fifoFd = fifoFd;
     }
 
-    void wait()
+    void write()
     {
-        receiveOnly!DoneMessage();
-    }
+        immutable int linesPerIteration = 100;
 
-    void start(uint firstLine, uint lastLine)
-    {
-        m_tid.send(StartMessage(firstLine, lastLine));
-    }
-
-    void exit()
-    {
-        m_tid.send(ExitMessage());
-    }
-
-    static void _threadFunc(shared ILineProvider lp, string pathToFifo)
-    {
-        scope(exit) if(logging) writefln("FifoWriter(%s): Exiting _threadFunc", pathToFifo);
-
-        try
+        if(m_bytesWritten == m_buffer.length)
         {
-            const uint linesPerIteration = 100;
-            bool done = false;
+            m_bytesWritten = 0;
 
-            while(!done)
+            auto lines = m_lp.get(m_linesRead, m_linesRead + linesPerIteration - 1);
+            if(lines.count != linesPerIteration)
             {
-                receive(
-                    (StartMessage msg) {
-                        if(logging) writefln("FifoWriter(%s): received start command %d - %d", pathToFifo, msg.firstLine, msg.lastLine);
-
-                        auto fifo = File(pathToFifo, "w");
-
-                        uint line = msg.firstLine;
-                        while(true)
-                        {
-                            uint lastLineOfIteration = line + linesPerIteration - 1;
-
-                            /* If the last line is given, then check if we've reached it */
-                            if(msg.lastLine != -1)
-                            {
-                                /* exit early if we've already sent everything that was requested */
-                                if(line >= msg.lastLine)
-                                {
-                                    break;
-                                }
-
-                                /* don't send lines beyond the requested last line */
-                                lastLineOfIteration = min(lastLineOfIteration, msg.lastLine);
-                            }
-
-                            auto lines = lp.get(line, lastLineOfIteration);
-
-                            /* exit early if no more lines are available */
-                            if(lines.isNull)
-                            {
-                                break;
-                            }
-
-                            if(logging) writefln("FifoWriter(%s): writing line %s: %s", pathToFifo, line, lines);
-                            fifo.write(lines);
-
-                            line = lastLineOfIteration + 1;
-                        }
-
-                        fifo.close();
-                        ownerTid.send(DoneMessage());
-                    },
-                    (ExitMessage msg) {
-                        if(logging) writefln("FifoWriter(%s): received exit command", pathToFifo);
-                        done = true;
-                    }
-                );
+                m_lastLineRead = true;
             }
+            //writefln("%d: read %d lines (%d - %d), %d bytes", m_fifoFd, lines.count, m_linesRead, m_linesRead + lines.count - 1, lines.text.length);
+            m_buffer = lines.text;
+            m_linesRead += lines.count;
         }
-        catch(Exception e)
-        {
-            writefln("FifoWriter(%s): exiting _threadFunc because of an exception: %s", pathToFifo, e);
-        }
-        catch(Error e)
-        {
-            writefln("FifoWriter(%s): exiting _threadFunc because of an error: %s", pathToFifo, e);
-        }
+
+        long bytesWrittenThisTime = core.sys.posix.unistd.write(m_fifoFd, &m_buffer[m_bytesWritten], m_buffer.length - m_bytesWritten);
+        //writefln("%d: wrote %d bytes", m_fifoFd, bytesWrittenThisTime);
+        m_bytesWritten += bytesWrittenThisTime;
+    }
+
+    bool eof()
+    {
+        return (m_bytesWritten == m_buffer.length) && m_lastLineRead;
     }
 }
+
+class FifoReader
+{
+private:
+    int m_fifoFd;
+    string m_text;
+    bool m_eof;
+
+public:
+    this(int fifoFd)
+    {
+        m_fifoFd = fifoFd;
+    }
+
+    void read()
+    {
+        char[4196] m_buffer;
+        long bytesReadThisTime = core.sys.posix.unistd.read(m_fifoFd, &m_buffer[0], m_buffer.length);
+        if(bytesReadThisTime == 0)
+        {
+            m_eof = true;
+        }
+        else
+        {
+            m_text ~= to!string(m_buffer[0..bytesReadThisTime]);
+        }
+    }
+
+    bool eof()
+    {
+        return m_eof;
+    }
+
+    string getText()
+    {
+        return m_text;
+    }
+}
+

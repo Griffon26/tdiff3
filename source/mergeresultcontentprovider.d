@@ -57,15 +57,15 @@ class MergeResultContentProvider: IFormattedContentProvider
 {
 private:
     ContentMapper m_contentMapper;
-    shared ILineProvider[3] m_lps;
+    ILineProvider[3] m_lps;
     DList!MergeResultSection m_mergeResultSections;
     string m_outputFileName;
 
 public:
     this(ContentMapper contentMapper,
-         shared ILineProvider lps0,
-         shared ILineProvider lps1,
-         shared ILineProvider lps2,
+         ILineProvider lps0,
+         ILineProvider lps1,
+         ILineProvider lps2,
          string outputFileName)
     {
         m_contentMapper = contentMapper;
@@ -112,10 +112,10 @@ public:
 
                 /* this should always be a valid line, otherwise contentmapper
                  * shouldn't have given us a valid line number and a source */
-                assert(!result.isNull);
+                assert(result.count != 0);
 
                 lineType = LineType.NORMAL;
-                text = result;
+                text = result.text;
             }
             break;
         case LineState.NONE:

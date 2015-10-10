@@ -32,16 +32,13 @@ import std.typecons;
  * Originally the plan was to have a chain of ILineProviders that could apply
  * filtering to data read from the input files (decoding/encoding, line
  * preprocessing, ...).
- * Because this chain of ILineProviders is shared between threads,
- * ILineProvider was made synchronized. If the synchronized keyword can be
- * avoided, then maybe this interface can be replaced by IContentProvider.
- * The reason for having multiple threads is explained in the documentation of
- * GnuDiff.
+ * ILineProvider was originally synchronized. Now that the synchronized keyword
+ * has been removed, maybe this interface can be replaced by IContentProvider.
  */
-synchronized interface ILineProvider
+interface ILineProvider
 {
-    Nullable!string get(int line);
-    Nullable!string get(int firstLine, int lastLine);
+    Tuple!(int, "count", string, "text") get(int line);
+    Tuple!(int, "count", string, "text") get(int firstLine, int lastLine);
     int getLastLineNumber();
 }
 
@@ -49,20 +46,16 @@ version(unittest)
 {
     import std.string;
 
-    synchronized class FakeLineProvider: ILineProvider
+    class FakeLineProvider: ILineProvider
     {
-        Nullable!string get(int line)
+        override Tuple!(int, "count", string, "text") get(int line)
         {
-            Nullable!string result;
-            result = format("line %d\n", line);
-            return result;
+            return tuple!("count", "text")(1, format("line %d\n", line));
         }
 
-        Nullable!string get(int firstLine, int lastLine)
+        override Tuple!(int, "count", string, "text") get(int firstLine, int lastLine)
         {
-            Nullable!string result;
-            result.nullify();
-            return result;
+            return tuple!("count", "text")(0, "");
         }
 
         int getLastLineNumber()

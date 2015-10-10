@@ -123,10 +123,10 @@ void main(string[] args)
 
     const int count = 3;
 
-    shared(SimpleFileLineProvider)[count] lps;
-    lps[0] = new shared SimpleFileLineProvider(inputFileNames[0]);
-    lps[1] = new shared SimpleFileLineProvider(inputFileNames[1]);
-    lps[2] = new shared SimpleFileLineProvider(inputFileNames[2]);
+    SimpleFileLineProvider[count] lps;
+    lps[0] = new SimpleFileLineProvider(inputFileNames[0]);
+    lps[1] = new SimpleFileLineProvider(inputFileNames[1]);
+    lps[2] = new SimpleFileLineProvider(inputFileNames[2]);
 
     GnuDiff gnuDiff = new GnuDiff("/tmp");
     gnuDiff.setFile(0, lps[0]);

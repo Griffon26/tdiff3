@@ -43,7 +43,7 @@ import ilineprovider;
  * that limits the amount of memory it uses (either by caching part of the file
  * or by using mmap).
  */
-synchronized class SimpleFileLineProvider: ILineProvider
+class SimpleFileLineProvider: ILineProvider
 {
     private string content;
     private string[] lines;
@@ -122,26 +122,26 @@ synchronized class SimpleFileLineProvider: ILineProvider
         return m_maxWidth;
     }
 
-    Nullable!string get(int i)
+    Tuple!(int, "count", string, "text") get(int i)
     {
-        Nullable!string result;
+        Tuple!(int, "count", string, "text") result;
         ensure_line_is_available(i);
 
         if(i < lines.length)
         {
-            result = lines[i];
+            result = tuple!("count", "text")(1, lines[i]);
         }
         else
         {
-            result.nullify();
+            result = tuple!("count", "text")(0, "");
         }
 
         return result;
     }
 
-    Nullable!string get(int firstLine, int lastLine)
+    Tuple!(int, "count", string, "text") get(int firstLine, int lastLine)
     {
-        Nullable!string result;
+        Tuple!(int, "count", string, "text") result;
         ensure_line_is_available(lastLine);
 
         if(firstLine < lines.length)
@@ -155,12 +155,13 @@ synchronized class SimpleFileLineProvider: ILineProvider
                     break;
                 }
                 strBuilder.put(lines[i]);
+                result.count++;
             }
-            result = strBuilder.data;
+            result.text = strBuilder.data;
         }
         else
         {
-            result.nullify();
+            result = tuple!("count", "text")(0, "");
         }
 
         return result;
