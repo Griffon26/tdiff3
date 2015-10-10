@@ -1580,12 +1580,14 @@ unittest
 }
 
 
-class DiffListIterator
+struct DiffListIterator
 {
-    private DiffList.Range m_diffListRange;
-    private int m_whichFile;
-    private Diff m_head;
+private:
+    DiffList.Range m_diffListRange;
+    int m_whichFile;
+    Diff m_head;
 
+public:
     this(DiffList diffList, int whichFile)
     {
         m_diffListRange = diffList[];
@@ -1669,46 +1671,46 @@ unittest
 
     DiffListIterator it;
 
-    it = new DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
+    it = DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
     assertEqual(it.getNextRun(), tuple(true, 1));
 
-    it = new DiffListIterator(toDiffList([Diff(0,2,3)]), 0);
+    it = DiffListIterator(toDiffList([Diff(0,2,3)]), 0);
     assertEqual(it.getNextRun(), tuple(false, 2));
 
-    it = new DiffListIterator(toDiffList([Diff(0,2,3)]), 1);
+    it = DiffListIterator(toDiffList([Diff(0,2,3)]), 1);
     assertEqual(it.getNextRun(), tuple(false, 3));
 
-    it = new DiffListIterator(toDiffList([Diff(3,5,7)]), 0);
+    it = DiffListIterator(toDiffList([Diff(3,5,7)]), 0);
     it.advance(2);
     assertEqual(it.getNextRun(), tuple(true, 1));
 
-    it = new DiffListIterator(toDiffList([Diff(3,5,7)]), 0);
+    it = DiffListIterator(toDiffList([Diff(3,5,7)]), 0);
     it.advance(3);
     assertEqual(it.getNextRun(), tuple(false, 5));
 
-    it = new DiffListIterator(toDiffList([Diff(3,5,7)]), 0);
+    it = DiffListIterator(toDiffList([Diff(3,5,7)]), 0);
     it.advance(4);
     assertEqual(it.getNextRun(), tuple(false, 4));
 
-    it = new DiffListIterator(toDiffList([Diff(3,5,7)]), 1);
+    it = DiffListIterator(toDiffList([Diff(3,5,7)]), 1);
     it.advance(4);
     assertEqual(it.getNextRun(), tuple(false, 6));
 
-    it = new DiffListIterator(toDiffList([Diff(3,5,7), Diff(3,2,1)]), 0);
+    it = DiffListIterator(toDiffList([Diff(3,5,7), Diff(3,2,1)]), 0);
     it.advance(10);
     assertEqual(it.getNextRun(), tuple(true, 1));
 
     // Check that advancing does not modify the original list
     auto dl = toDiffList([Diff(3,5,7), Diff(3,2,1)]);
-    it = new DiffListIterator(dl, 0);
+    it = DiffListIterator(dl, 0);
     it.advance(10);
     assertEqual(array(dl), [Diff(3,5,7), Diff(3,2,1)]);
 
 
 }
 
-DList!StyleFragment lineStyleFromFineDiffs(DiffListIterator it1,
-                                           DiffListIterator it2,
+DList!StyleFragment lineStyleFromFineDiffs(ref DiffListIterator it1,
+                                           ref DiffListIterator it2,
                                            DiffStyle sameInIt1,
                                            DiffStyle sameInIt2)
 {
@@ -1771,23 +1773,23 @@ unittest
     DList!StyleFragment dl;
 
     // Both identical
-    it1 = new DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
-    it2 = new DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
+    it1 = DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
+    it2 = DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.ALL_SAME, 1),
                             StyleFragment(DiffStyle.DIFFERENT, 2)]);
 
     // Difference trumps equal in same Diff
-    it1 = new DiffListIterator(toDiffList([Diff(3,2,2)]), 0);
-    it2 = new DiffListIterator(toDiffList([Diff(1,4,3)]), 0);
+    it1 = DiffListIterator(toDiffList([Diff(3,2,2)]), 0);
+    it2 = DiffListIterator(toDiffList([Diff(1,4,3)]), 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.ALL_SAME, 1),
                             StyleFragment(DiffStyle.A_B_SAME, 2),
                             StyleFragment(DiffStyle.DIFFERENT, 2)]);
 
     // Difference trumps equal in next Diff
-    it1 = new DiffListIterator(toDiffList([Diff(2,1,1), Diff(1,1,1)]), 0);
-    it2 = new DiffListIterator(toDiffList([Diff(1,4,3)]), 0);
+    it1 = DiffListIterator(toDiffList([Diff(2,1,1), Diff(1,1,1)]), 0);
+    it2 = DiffListIterator(toDiffList([Diff(1,4,3)]), 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.ALL_SAME, 1),
                             StyleFragment(DiffStyle.A_B_SAME, 1),
@@ -1796,31 +1798,31 @@ unittest
                             StyleFragment(DiffStyle.DIFFERENT, 1)]);
 
     // Difference on either side trumps equal in other
-    it1 = new DiffListIterator(toDiffList([Diff(2,2,0), Diff(2,0,0)]), 0);
-    it2 = new DiffListIterator(toDiffList([Diff(0,2,0), Diff(2,2,0)]), 0);
+    it1 = DiffListIterator(toDiffList([Diff(2,2,0), Diff(2,0,0)]), 0);
+    it2 = DiffListIterator(toDiffList([Diff(0,2,0), Diff(2,2,0)]), 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.A_B_SAME, 2),
                             StyleFragment(DiffStyle.A_C_SAME, 2),
                             StyleFragment(DiffStyle.A_B_SAME, 2)]);
 
     // Equal in the middle of a stretch of diff
-    it1 = new DiffListIterator(toDiffList([Diff(0,2,0), Diff(3,4,0)]), 0);
-    it2 = new DiffListIterator(toDiffList([Diff(9,0,0)]), 0);
+    it1 = DiffListIterator(toDiffList([Diff(0,2,0), Diff(3,4,0)]), 0);
+    it2 = DiffListIterator(toDiffList([Diff(9,0,0)]), 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.A_C_SAME, 2),
                             StyleFragment(DiffStyle.ALL_SAME, 3),
                             StyleFragment(DiffStyle.A_C_SAME, 4)]);
 
     // Diff in the middle of a stretch of equal
-    it1 = new DiffListIterator(toDiffList([Diff(2,3,0), Diff(4,0,0)]), 0);
-    it2 = new DiffListIterator(toDiffList([Diff(9,0,0)]), 0);
+    it1 = DiffListIterator(toDiffList([Diff(2,3,0), Diff(4,0,0)]), 0);
+    it2 = DiffListIterator(toDiffList([Diff(9,0,0)]), 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.ALL_SAME, 2),
                             StyleFragment(DiffStyle.A_C_SAME, 3),
                             StyleFragment(DiffStyle.ALL_SAME, 4)]);
 
-    it1 = new DiffListIterator(toDiffList([Diff(2, 18, 0), Diff(1, 0, 0)]), 0);
-    it2 = new DiffListIterator(toDiffList([Diff(0, 1, 36), Diff(1, 19, 0)]), 0);
+    it1 = DiffListIterator(toDiffList([Diff(2, 18, 0), Diff(1, 0, 0)]), 0);
+    it2 = DiffListIterator(toDiffList([Diff(0, 1, 36), Diff(1, 19, 0)]), 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.A_B_SAME, 1),
                             StyleFragment(DiffStyle.ALL_SAME, 1),
@@ -1848,16 +1850,16 @@ void determineFineDiffStylePerLine(ref Diff3Line d3l,
 
     DiffListIterator it1, it2;
 
-    it1 = new DiffListIterator(fineDiffAB, 0);
-    it2 = new DiffListIterator(fineDiffAC, 0);
+    it1 = DiffListIterator(fineDiffAB, 0);
+    it2 = DiffListIterator(fineDiffAC, 0);
     d3l.styleA = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
 
-    it1 = new DiffListIterator(fineDiffAB, 1);
-    it2 = new DiffListIterator(fineDiffBC, 0);
+    it1 = DiffListIterator(fineDiffAB, 1);
+    it2 = DiffListIterator(fineDiffBC, 0);
     d3l.styleB = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.B_C_SAME);
 
-    it1 = new DiffListIterator(fineDiffAC, 1);
-    it2 = new DiffListIterator(fineDiffBC, 1);
+    it1 = DiffListIterator(fineDiffAC, 1);
+    it2 = DiffListIterator(fineDiffBC, 1);
     d3l.styleC = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_C_SAME, DiffStyle.B_C_SAME);
 }
 

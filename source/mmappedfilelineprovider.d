@@ -140,7 +140,7 @@ public:
         {
             auto lineStart = (i == 0) ? 0 : m_lineEnds[i - 1];
             auto lineEnd = m_lineEnds[i];
-            result.text = to!string(m_file[lineStart..lineEnd]);
+            result.text = cast(string)(m_file[lineStart..lineEnd]);
             result.count = 1;
         }
         else
