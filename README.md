@@ -9,11 +9,11 @@ The differences with kdiff3 (and possibly other diff/merge programs) are:
 
 ## Project status
 
-Tdiff3 is still at an early stage of development. This means that some shortcuts were taken to quickly get the application into a usable state. Some examples:
-* for now the input files are read entirely into memory when the application starts
-* no editing of the merge result is possible yet, only conflict resolution through selection
+Tdiff3 is still at an early stage of development. This means that some important features are still missing. Some examples:
+* it isn't clear in the user interface what keys can be used
+* there is no status bar or other type of feedback when the application cannot execute a command from the user (such as saving the file when there are still unsolved conflicts)
 
-This will be the focus of development in the coming period, along with important usability improvements.
+This will be the focus of development in the coming period.
 
 If you're interested in this program, either as a user or possibly even a developer I'd love to hear from you. You can find my email address on GitHub.
 
