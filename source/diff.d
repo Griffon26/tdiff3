@@ -1212,9 +1212,9 @@ unittest
 }
 
 
-DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
+Diff[] calcDiff(string line1, string line2, int match, int maxSearchRange)
 {
-    DiffList diffList;
+    Diff[] diffList;
 
     auto line1array = array(cast(ubyte[])line1);
     auto line2array = array(cast(ubyte[])line2);
@@ -1296,7 +1296,7 @@ DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
         {
             // continue somehow
             Diff d = Diff(nofEquals, bestI1, bestI2);
-            diffList.insertBack(d);
+            diffList ~= d;
 
             r1.popFrontN(bestI1);
             r2.popFrontN(bestI2);
@@ -1305,7 +1305,7 @@ DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
         {
             // Nothing else to match.
             Diff d = Diff(cast(uint)nofEquals, cast(uint)r1.length, cast(uint)r2.length);
-            diffList.insertBack(d);
+            diffList ~= d;
 
             endReached = true;
         }
@@ -1326,15 +1326,14 @@ DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
         }
 
 
-        Diff d = diffList.back;
+        Diff d = diffList[$ - 1];
         if(nofUnmatched > 0)
         {
             // We want to go backwards the nofUnmatched elements and redo
             // the matching
-            d = diffList.back;
+            d = diffList[$ - 1];
             Diff origBack = d;
-            diffList.removeBack();
-
+            diffList = diffList[0..$ - 1];
 
             while(nofUnmatched > 0)
             {
@@ -1359,7 +1358,7 @@ DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
                     d.nofEquals += diffList.back.nofEquals;
                     d.diff1 += diffList.back.diff1;
                     d.diff2 += diffList.back.diff2;
-                    diffList.removeBack();
+                    diffList = diffList[0..$ - 1];
                     endReached = false;
                 }
             }
@@ -1367,14 +1366,14 @@ DiffList calcDiff(string line1, string line2, int match, int maxSearchRange)
 
             if(endReached)
             {
-                diffList.insertBack(origBack);
+                diffList ~= origBack;
             }
             else
             {
                 assert(nofUnmatched == 0);
                 r1 = line1array[ru1.length + nofUnmatched..$];
                 r2 = line2array[ru2.length + nofUnmatched..$];
-                diffList.insertBack(d);
+                diffList ~= d;
             }
         }
 
@@ -1454,7 +1453,7 @@ unittest
 
     void testCalcDiffIncludingMirrored(string line1, string line2, int match, int maxSearchRange, Diff[] expectedDiffArray, string file = __FILE__, int line = __LINE__)
     {
-        DiffList dl;
+        Diff[] dl;
         dl = calcDiff(line1, line2, match, maxSearchRange);
         assertEqual(normalize(array(dl)), expectedDiffArray, format("test case at %s:%d (regular) failed", file, line));
 
@@ -1480,7 +1479,7 @@ unittest
     testCalcDiffIncludingMirrored("ｅｒ", "ｔｅｒ", 2, 500, [Diff(0, 0, 3), Diff(6, 0, 0)]);
 }
 
-static void verifyDiffList(DiffList diffList, int size1, int size2)
+static void verifyDiffList(Diff[] diffList, int size1, int size2)
 {
     int l1 = 0;
     int l2 = 0;
@@ -1495,7 +1494,7 @@ static void verifyDiffList(DiffList diffList, int size1, int size2)
     assertEqual(l2, size2);
 }
 
-DiffList fineDiff(int k1,
+Diff[] fineDiff(int k1,
                   int k2,
                   string line1,
                   string line2)
@@ -1509,18 +1508,18 @@ DiffList fineDiff(int k1,
         filesIdentical = false;
     }
 
-    DiffList diffList;
+    Diff[] diffList;
     int line1Length = (k1 == -1) ? 0 : to!int(line1.length);
     int line2Length = (k2 == -1) ? 0 : to!int(line2.length);
     if(k1 == -1 || k2 == -1)
     {
-        diffList.insertBack(Diff(0, line1Length, line2Length));
+        diffList = [Diff(0, line1Length, line2Length)];
     }
     else
     {
         if(line1.length == line2.length && line1 == line2)
         {
-            diffList.insertBack(Diff(to!int(line1.length), 0, 0));
+            diffList = [Diff(to!int(line1.length), 0, 0)];
         }
         else
         {
@@ -1583,14 +1582,14 @@ unittest
 struct DiffListIterator
 {
 private:
-    DiffList.Range m_diffListRange;
+    Diff[] m_diffListRange;
     int m_whichFile;
     Diff m_head;
 
 public:
-    this(DiffList diffList, int whichFile)
+    this(Diff[] diffList, int whichFile)
     {
-        m_diffListRange = diffList[];
+        m_diffListRange = diffList;
         m_whichFile = whichFile;
     }
 
@@ -1656,52 +1655,42 @@ public:
     }
 }
 
-private DiffList toDiffList(Diff[] diffArray)
-{
-    DiffList diffList;
-    foreach(d; diffArray)
-    {
-        diffList.insertBack(d);
-    }
-    return diffList;
-}
-
 unittest
 {
 
     DiffListIterator it;
 
-    it = DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
+    it = DiffListIterator([Diff(1,2,3)], 0);
     assertEqual(it.getNextRun(), tuple(true, 1));
 
-    it = DiffListIterator(toDiffList([Diff(0,2,3)]), 0);
+    it = DiffListIterator([Diff(0,2,3)], 0);
     assertEqual(it.getNextRun(), tuple(false, 2));
 
-    it = DiffListIterator(toDiffList([Diff(0,2,3)]), 1);
+    it = DiffListIterator([Diff(0,2,3)], 1);
     assertEqual(it.getNextRun(), tuple(false, 3));
 
-    it = DiffListIterator(toDiffList([Diff(3,5,7)]), 0);
+    it = DiffListIterator([Diff(3,5,7)], 0);
     it.advance(2);
     assertEqual(it.getNextRun(), tuple(true, 1));
 
-    it = DiffListIterator(toDiffList([Diff(3,5,7)]), 0);
+    it = DiffListIterator([Diff(3,5,7)], 0);
     it.advance(3);
     assertEqual(it.getNextRun(), tuple(false, 5));
 
-    it = DiffListIterator(toDiffList([Diff(3,5,7)]), 0);
+    it = DiffListIterator([Diff(3,5,7)], 0);
     it.advance(4);
     assertEqual(it.getNextRun(), tuple(false, 4));
 
-    it = DiffListIterator(toDiffList([Diff(3,5,7)]), 1);
+    it = DiffListIterator([Diff(3,5,7)], 1);
     it.advance(4);
     assertEqual(it.getNextRun(), tuple(false, 6));
 
-    it = DiffListIterator(toDiffList([Diff(3,5,7), Diff(3,2,1)]), 0);
+    it = DiffListIterator([Diff(3,5,7), Diff(3,2,1)], 0);
     it.advance(10);
     assertEqual(it.getNextRun(), tuple(true, 1));
 
     // Check that advancing does not modify the original list
-    auto dl = toDiffList([Diff(3,5,7), Diff(3,2,1)]);
+    auto dl = [Diff(3,5,7), Diff(3,2,1)];
     it = DiffListIterator(dl, 0);
     it.advance(10);
     assertEqual(array(dl), [Diff(3,5,7), Diff(3,2,1)]);
@@ -1773,23 +1762,23 @@ unittest
     DList!StyleFragment dl;
 
     // Both identical
-    it1 = DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
-    it2 = DiffListIterator(toDiffList([Diff(1,2,3)]), 0);
+    it1 = DiffListIterator([Diff(1,2,3)], 0);
+    it2 = DiffListIterator([Diff(1,2,3)], 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.ALL_SAME, 1),
                             StyleFragment(DiffStyle.DIFFERENT, 2)]);
 
     // Difference trumps equal in same Diff
-    it1 = DiffListIterator(toDiffList([Diff(3,2,2)]), 0);
-    it2 = DiffListIterator(toDiffList([Diff(1,4,3)]), 0);
+    it1 = DiffListIterator([Diff(3,2,2)], 0);
+    it2 = DiffListIterator([Diff(1,4,3)], 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.ALL_SAME, 1),
                             StyleFragment(DiffStyle.A_B_SAME, 2),
                             StyleFragment(DiffStyle.DIFFERENT, 2)]);
 
     // Difference trumps equal in next Diff
-    it1 = DiffListIterator(toDiffList([Diff(2,1,1), Diff(1,1,1)]), 0);
-    it2 = DiffListIterator(toDiffList([Diff(1,4,3)]), 0);
+    it1 = DiffListIterator([Diff(2,1,1), Diff(1,1,1)], 0);
+    it2 = DiffListIterator([Diff(1,4,3)], 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.ALL_SAME, 1),
                             StyleFragment(DiffStyle.A_B_SAME, 1),
@@ -1798,31 +1787,31 @@ unittest
                             StyleFragment(DiffStyle.DIFFERENT, 1)]);
 
     // Difference on either side trumps equal in other
-    it1 = DiffListIterator(toDiffList([Diff(2,2,0), Diff(2,0,0)]), 0);
-    it2 = DiffListIterator(toDiffList([Diff(0,2,0), Diff(2,2,0)]), 0);
+    it1 = DiffListIterator([Diff(2,2,0), Diff(2,0,0)], 0);
+    it2 = DiffListIterator([Diff(0,2,0), Diff(2,2,0)], 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.A_B_SAME, 2),
                             StyleFragment(DiffStyle.A_C_SAME, 2),
                             StyleFragment(DiffStyle.A_B_SAME, 2)]);
 
     // Equal in the middle of a stretch of diff
-    it1 = DiffListIterator(toDiffList([Diff(0,2,0), Diff(3,4,0)]), 0);
-    it2 = DiffListIterator(toDiffList([Diff(9,0,0)]), 0);
+    it1 = DiffListIterator([Diff(0,2,0), Diff(3,4,0)], 0);
+    it2 = DiffListIterator([Diff(9,0,0)], 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.A_C_SAME, 2),
                             StyleFragment(DiffStyle.ALL_SAME, 3),
                             StyleFragment(DiffStyle.A_C_SAME, 4)]);
 
     // Diff in the middle of a stretch of equal
-    it1 = DiffListIterator(toDiffList([Diff(2,3,0), Diff(4,0,0)]), 0);
-    it2 = DiffListIterator(toDiffList([Diff(9,0,0)]), 0);
+    it1 = DiffListIterator([Diff(2,3,0), Diff(4,0,0)], 0);
+    it2 = DiffListIterator([Diff(9,0,0)], 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.ALL_SAME, 2),
                             StyleFragment(DiffStyle.A_C_SAME, 3),
                             StyleFragment(DiffStyle.ALL_SAME, 4)]);
 
-    it1 = DiffListIterator(toDiffList([Diff(2, 18, 0), Diff(1, 0, 0)]), 0);
-    it2 = DiffListIterator(toDiffList([Diff(0, 1, 36), Diff(1, 19, 0)]), 0);
+    it1 = DiffListIterator([Diff(2, 18, 0), Diff(1, 0, 0)], 0);
+    it2 = DiffListIterator([Diff(0, 1, 36), Diff(1, 19, 0)], 0);
     dl = lineStyleFromFineDiffs(it1, it2, DiffStyle.A_B_SAME, DiffStyle.A_C_SAME);
     assertEqual(array(dl), [StyleFragment(DiffStyle.A_B_SAME, 1),
                             StyleFragment(DiffStyle.ALL_SAME, 1),
