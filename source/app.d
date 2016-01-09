@@ -77,9 +77,11 @@ import common;
 import contentmapper;
 import diff;
 import diff3contentprovider;
+import difflistgenerator;
 import gnudiff;
 import icontentprovider;
 import iformattedcontentprovider;
+import ilineprovider;
 import linenumbercontentprovider;
 import mergeresultcontentprovider;
 import mmappedfilelineprovider;
@@ -128,30 +130,19 @@ void main(string[] args)
     lps[1] = new MmappedFileLineProvider(inputFileNames[1]);
     lps[2] = new MmappedFileLineProvider(inputFileNames[2]);
 
-    GnuDiff gnuDiff = new GnuDiff("/tmp");
-    gnuDiff.setFile(0, lps[0]);
-    gnuDiff.setFile(1, lps[1]);
-    gnuDiff.setFile(2, lps[2]);
-
-    writefln("Starting diff");
-
-    /* TODO:
-       Always keep functions like runDiff and calcDiff3LineListUsingAB such
-       that they can be applied to regions within manual diff alignments. 
-       That way we can hopefully avoid having to correct the manual diff
-       alignments and we can also prevent having to rediff everything when
-       manual diff alignments are added or removed.
-     */
-
-    writefln("diffing 0 and 1");
-    auto diffList12 = gnuDiff.runDiff(0, 1, 0, -1, 0, -1);
-    writefln("diffing 0 and 2");
-    auto diffList13 = gnuDiff.runDiff(0, 2, 0, -1, 0, -1);
-    writefln("diffing 1 and 2");
-    auto diffList23 = gnuDiff.runDiff(1, 2, 0, -1, 0, -1);
+    auto diffLists = generateDiffLists(to!(ILineProvider[3])(lps));
+    auto diffList12 = diffLists[0];
+    auto diffList13 = diffLists[1];
+    auto diffList23 = diffLists[2];
 
     writefln("diff.calcDiff3LineList");
     auto diff3LineList = diff.calcDiff3LineList(diffList12, diffList13, diffList23);
+
+    /* Now that we no longer need them, clear the difflists to free up memory */
+    diffList12.clear();
+    diffList13.clear();
+    diffList23.clear();
+
     writefln("validateDiff3LineListForN");
     validateDiff3LineListForN(diff3LineList, 0, 0, lps[0].getLastLineNumber());
     validateDiff3LineListForN(diff3LineList, 1, 0, lps[1].getLastLineNumber());
@@ -165,10 +156,6 @@ void main(string[] args)
     //printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
 
     writefln("Cleaning up");
-
-    gnuDiff.cleanup();
-
-
 
     auto d3la = Diff3LineArray(diff3LineList[]);
     int nrOfLines = to!int(d3la.length);
