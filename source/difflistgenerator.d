@@ -81,6 +81,7 @@ lin[][MAX_NR_OF_FILES] createLineEquivalenceLists(ILineProvider[MAX_NR_OF_FILES]
 
     for(int lpIndex = 0; lpIndex < 3; lpIndex++)
     {
+        writefln("Hashing lines of file %d", lpIndex);
         int i = 0;
         while(lineProviders[lpIndex].get(i).count != 0)
         {
@@ -177,6 +178,7 @@ DiffList[MAX_NR_OF_FILES] generateDiffLists(ILineProvider[MAX_NR_OF_FILES] lineP
                             [equivs[0], equivs[2]],
                             [equivs[1], equivs[2]] ])
     {
+        writefln("Diffing pair of files nr %d", idx);
         dls[idx] = diffPair(sources[0], sources[1], equivMax);
     }
 
