@@ -88,7 +88,7 @@ class Diff3ContentProvider: IFormattedContentProvider
         }
         else
         {
-            return StyleList();
+            return StyleList.init;
         }
     }
 

@@ -106,7 +106,7 @@ struct StyleFragment
     int length;
 }
 
-alias StyleList = DList!StyleFragment;
+alias StyleList = StyleFragment[];
 
 struct Diff3Line
 {

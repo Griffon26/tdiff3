@@ -131,7 +131,7 @@ public:
                     styleFragment.style = DiffStyle.ALL_SAME_HIGHLIGHTED;
                 }
             }
-            styleList.insertBack(StyleFragment(DiffStyle.ALL_SAME_HIGHLIGHTED, m_lastLineLength - styleLength));
+            styleList ~= StyleFragment(DiffStyle.ALL_SAME_HIGHLIGHTED, m_lastLineLength - styleLength);
         }
         return styleList;
     }

@@ -152,6 +152,7 @@ void main(string[] args)
     trimDiff3LineList(diff3LineList, lps[0], lps[1], lps[2]);
     //printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
 
+    writefln("determineFineDiffStyle");
     determineFineDiffStyle(diff3LineList, lps[0], lps[1], lps[2]);
     //printDiff3List(diff3LineList, lps[0], lps[1], lps[2]);
 

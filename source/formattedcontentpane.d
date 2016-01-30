@@ -62,7 +62,7 @@ class FormattedContentPane: ContentPane
         int offset = 0;
         auto defaultAttributes = m_theme.getDiffStyleAttributes(DiffStyle.ALL_SAME, false);
 
-        if(styleList.empty)
+        if(styleList.length == 0)
         {
             wattrset(m_pad, defaultAttributes);
             wprintw(m_pad, "%s", toStringz(line));

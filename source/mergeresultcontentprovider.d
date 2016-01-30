@@ -151,7 +151,7 @@ public:
 
     StyleList getFormat(int line)
     {
-        return make!StyleList;
+        return StyleList.init;
     }
 
     int getContentWidth()
