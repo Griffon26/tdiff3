@@ -1748,9 +1748,18 @@ DList!StyleFragment lineStyleFromFineDiffs(ref DiffListIterator it1,
 
     assert(it1.atEnd() && it2.atEnd());
 
+    /* Add the style for the remaining set of characters if any */
     if(run != 0)
     {
-        styleList.insertBack(StyleFragment(style, run));
+        /* Since the style for the entire line will be assumed to be ALL_SAME
+         * if the styleList is empty, don't create lines with only a single
+         * ALL_SAME entry. This case (all 3 lines being equal) is very common,
+         * so saving allocations here can increase performance significantly.
+         */
+        if(style != DiffStyle.ALL_SAME || !styleList.empty())
+        {
+            styleList.insertBack(StyleFragment(style, run));
+        }
     }
 
     return styleList;
