@@ -4,6 +4,7 @@
 /__dummy.html
 /__test__library__
 /tdiff3
+/tdiff3.log
 *.o
 *.obj
 *.lst
