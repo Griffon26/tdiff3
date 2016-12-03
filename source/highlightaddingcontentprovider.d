@@ -66,7 +66,7 @@ public:
 
     void setHighlight(LineNumberRange linesToHighlight)
     {
-        auto rangeToRedraw = merge(linesToHighlight, m_linesToHighlight);
+        auto rangeToRedraw = common.merge(linesToHighlight, m_linesToHighlight);
         m_linesToHighlight = linesToHighlight;
         m_linesChanged.emit(rangeToRedraw);
     }
