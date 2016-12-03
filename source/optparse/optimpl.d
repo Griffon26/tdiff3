@@ -29,8 +29,8 @@ SOFTWARE.
  */
 module optimpl;
 
+import core.stdc.stdlib : exit, EXIT_FAILURE, EXIT_SUCCESS;
 import std.string : indexOf, toUpper;
-import std.c.stdlib : exit, EXIT_FAILURE, EXIT_SUCCESS;
 import std.conv : to, ConvException;
 import std.path : baseName;
 import std.utf : toUTF8, toUTF32;

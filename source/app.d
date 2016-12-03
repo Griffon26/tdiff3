@@ -63,8 +63,8 @@
  */
 module app;
 
+import core.stdc.locale;
 import std.algorithm;
-import std.c.locale;
 import std.conv;
 import std.getopt;
 import std.math;

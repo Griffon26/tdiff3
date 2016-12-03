@@ -50,8 +50,8 @@ version (Tango) {
     //alias string string;
     +/
 } else {
+    import core.stdc.stdlib : exit, EXIT_FAILURE, EXIT_SUCCESS;
     import std.stdio : writefln, writef;
-    import std.c.stdlib : exit, EXIT_FAILURE, EXIT_SUCCESS;
     /+
     import std.string : find, toupper, toString;
     import std.conv : toInt, ConvError;

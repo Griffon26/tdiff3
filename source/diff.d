@@ -28,9 +28,9 @@
  */
 module diff;
 
+import core.stdc.locale;
 import std.algorithm;
 import std.array;
-import std.c.locale;
 import std.container;
 import std.conv;
 import std.math;

@@ -25,8 +25,8 @@
  */
 module stringcolumns;
 
-import std.c.locale;
-import std.c.stddef;
+import core.stdc.locale;
+import core.stdc.stddef;
 import std.container;
 import std.conv;
 import std.utf;
