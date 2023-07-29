@@ -6,6 +6,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-add_executable(test.tdiff3 test_overlap.cpp)
+add_executable(test.tdiff3
+    ../src/common.cpp
+    test_overlap.cpp
+)
 target_link_libraries(test.tdiff3 PRIVATE GTest::gtest_main)
 

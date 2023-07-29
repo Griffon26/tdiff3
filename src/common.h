@@ -26,16 +26,8 @@
 #pragma once
 
 #include <cassert>
-#include <fstream>
 #include <string>
 #include <vector>
-
-//import std.algorithm;
-//import std.container;
-//import std.stdio;
-//import std.typecons;
-
-//import myassert;
 
 class UserException: public std::exception
 {
@@ -75,31 +67,8 @@ enum class DiffStyle
     ALL_SAME_HIGHLIGHTED
 };
 
-int left(DiffSelection ds)
-{
-    switch(ds)
-    {
-    case DiffSelection::A_vs_B:
-        return 0;
-    case DiffSelection::A_vs_C:
-        return 0;
-    case DiffSelection::B_vs_C:
-        return 1;
-    }
-}
-
-int right(DiffSelection ds)
-{
-    switch(ds)
-    {
-    case DiffSelection::A_vs_B:
-        return 1;
-    case DiffSelection::A_vs_C:
-        return 2;
-    case DiffSelection::B_vs_C:
-        return 2;
-    }
-}
+int left(DiffSelection ds);
+int right(DiffSelection ds);
 
 struct StyleFragment
 {
@@ -182,13 +151,7 @@ template where(T)
 }
 #endif
 
-void log(std::string msg)
-{
-    std::fstream f;
-    f.open("tdiff3.log", std::ios_base::out|std::ios_base::app); // open for writing
-    f << msg << "\n";
-    f.close();
-}
+void log(std::string msg);
 
 /**
  * A range of line numbers
@@ -232,62 +195,19 @@ struct LineNumberRange
 /**
  * Checks if the specified line is part of the specified range. The range may be infinite.
  */
-bool contains(LineNumberRange range, int line)
-{
-    assert(range.isValid());
-
-    return line >= range.firstLine && (line <= range.lastLine || !range.isFinite());
-}
+bool contains(LineNumberRange range, int line);
 
 /**
  * overlap will return the range of lines that is present in both input ranges.
  * The returned range must be checked for validity, because if there is no
  * overlap it will be invalid. The input ranges may be infinite.
  */
-LineNumberRange overlap(LineNumberRange thisRange, LineNumberRange otherRange)
-{
-    assert(thisRange.isValid());
-    assert(otherRange.isValid());
-
-    int firstLine = std::max(thisRange.firstLine, otherRange.firstLine);
-
-    int lastLine;
-    if(thisRange.isFinite())
-    {
-        if(otherRange.isFinite())
-        {
-            lastLine = std::min(thisRange.lastLine, otherRange.lastLine);
-        }
-        else // otherRange is infinite
-        {
-            lastLine = thisRange.lastLine;
-        }
-    }
-    else // this range is infinite
-    {
-        // Last is last of other range, regardless of whether that's -1 or not
-        lastLine = otherRange.lastLine;
-    }
-
-    if((lastLine != -1) && (firstLine > lastLine))
-    {
-        firstLine = lastLine = -1;
-    }
-
-    return LineNumberRange(firstLine, lastLine);
-}
+LineNumberRange overlap(LineNumberRange thisRange, LineNumberRange otherRange);
 
 /**
  * merge will return the smallest range that contains both input ranges
  */
-LineNumberRange merge(LineNumberRange thisRange, LineNumberRange otherRange)
-{
-    assert(thisRange.isValid());
-    assert(otherRange.isValid());
-
-    return LineNumberRange(std::min(thisRange.firstLine, otherRange.firstLine),
-                           std::max(thisRange.lastLine, otherRange.lastLine));
-}
+LineNumberRange merge(LineNumberRange thisRange, LineNumberRange otherRange);
 
 struct Position
 {

@@ -1,4 +1,5 @@
 add_executable(tdiff3
+    common.cpp
     difflistgenerator.cpp
     main.cpp
     mmappedfilelineprovider.cpp

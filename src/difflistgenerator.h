@@ -25,10 +25,11 @@
  */
 #pragma once
 
+#include "common.h"
 #include "ilineprovider.h"
 
 const uint MAX_NR_OF_FILES = 3;
 
-std::vector<DiffList> generateDiffLists(const std::vector<ILineProvider&>& lineProviders);
+std::vector<DiffList> generateDiffLists(const std::vector<ILineProvider *>& lineProviders);
 void verifyDiffList(DiffList& diffList, int size1, int size2);
 

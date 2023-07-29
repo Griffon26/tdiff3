@@ -66,6 +66,7 @@
 #include <string>
 #include "cxxopts.hpp"
 
+#include "difflistgenerator.h"
 #include "mmappedfilelineprovider.h"
 
 
@@ -120,9 +121,10 @@ int main(int argc, char *argv[])
     lps[0] = std::make_unique<MmappedFileLineProvider>(inputFileNames[0]);
     lps[1] = std::make_unique<MmappedFileLineProvider>(inputFileNames[1]);
     lps[2] = std::make_unique<MmappedFileLineProvider>(inputFileNames[2]);
+    std::vector<ILineProvider*> lpsVector{lps[0].get(), lps[1].get(), lps[2].get()};
 
+    auto diffLists = generateDiffLists(lpsVector);
 #if 0
-    auto diffLists = generateDiffLists(to!(ILineProvider[3])(lps));
     auto diffList12 = diffLists[0];
     auto diffList13 = diffLists[1];
     auto diffList23 = diffLists[2];
