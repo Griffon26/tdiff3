@@ -4,3 +4,8 @@ add_executable(tdiff3
     mmappedfilelineprovider.cpp
 )
 
+target_link_libraries(tdiff3
+    PRIVATE
+    gnudiff
+)
+

@@ -43,6 +43,13 @@ class UserException: public std::exception
 
 struct Diff
 {
+    Diff(int eq, int d1, int d2):
+        nofEquals(eq),
+        diff1(d1),
+        diff2(d2)
+    {
+    }
+
     int nofEquals;
 
     int diff1;

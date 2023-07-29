@@ -23,6 +23,7 @@
  * Authors: Maurice van der Pot
  * License: $(LINK2 http://www.gnu.org/licenses/gpl-2.0.txt, GNU GPL v2.0) or later.
  */
+#pragma once
 
 /**
  * ILineProvider provides line-based access to input data.
@@ -39,8 +40,8 @@
 class ILineProvider
 {
 public:
-    std::vector<std::string> get(int line);
-    std::vector<std::string> get(int firstLine, int lastLine);
-    int getLastLineNumber();
+    virtual std::vector<std::string_view> get(size_t line) = 0;
+    //virtual std::vector<std::string_view> get(size_t firstLine, size_t lastLine) = 0;
+    virtual size_t getLastLineNumber() = 0;
 };
 

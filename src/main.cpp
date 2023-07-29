@@ -109,10 +109,10 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    std::cout << "Input file 1: " << inputFileNames[0];
-    std::cout << "Input file 2: " << inputFileNames[1];
-    std::cout << "Input file 3: " << inputFileNames[2];
-    std::cout << "Output file : " << outputFileName;
+    std::cout << "Input file 1: " << inputFileNames[0] << "\n";
+    std::cout << "Input file 2: " << inputFileNames[1] << "\n";
+    std::cout << "Input file 3: " << inputFileNames[2] << "\n";
+    std::cout << "Output file : " << outputFileName << "\n";
 
     const int count = 3;
 

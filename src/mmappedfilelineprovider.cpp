@@ -193,7 +193,7 @@ int MmappedFileLineProvider::getMaxWidth()
     return m_maxWidth;
 }
 
-std::vector<std::string_view> MmappedFileLineProvider::get(int i)
+std::vector<std::string_view> MmappedFileLineProvider::get(size_t i)
 {
     std::vector<std::string_view> result;
     ensure_line_is_available(i);

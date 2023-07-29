@@ -46,11 +46,11 @@ class MmappedFileLineProvider: public ILineProvider
 {
 public:
     MmappedFileLineProvider(const std::string& filename);
-    ~MmappedFileLineProvider();
+    virtual ~MmappedFileLineProvider();
 
-    size_t getLastLineNumber();
+    virtual size_t getLastLineNumber() override;
     int getMaxWidth();
-    std::vector<std::string_view> get(int i);
+    virtual std::vector<std::string_view> get(size_t i) override;
     //std::vector<std::string_view> get(int firstLine, int lastLine);
 
 private:

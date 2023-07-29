@@ -29,6 +29,6 @@
 
 const uint MAX_NR_OF_FILES = 3;
 
-std::vector<DiffList> generateDiffLists(ILineProvider lineProviders[MAX_NR_OF_FILES]);
-static void verifyDiffList(DiffList& diffList, int size1, int size2);
+std::vector<DiffList> generateDiffLists(const std::vector<ILineProvider&>& lineProviders);
+void verifyDiffList(DiffList& diffList, int size1, int size2);
 
