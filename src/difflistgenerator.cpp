@@ -75,12 +75,12 @@ namespace std
 
 std::vector<std::vector<lin>> createLineEquivalenceLists(const std::vector<ILineProvider*>& lineProviders, lin *p_equivMax)
 {
-    std::vector<std::vector<lin>> equivs;
+    std::vector<std::vector<lin>> equivs(lineProviders.size());
     std::unordered_map<HashedLine, lin> hashmap;
 
     for(size_t lpIndex = 0; lpIndex < lineProviders.size(); lpIndex++)
     {
-        printf("Hashing lines of file %lu", lpIndex);
+        printf("Hashing lines of file %lu\n", lpIndex);
         assert(lineProviders[lpIndex] != nullptr);
 
         int i = 0;
@@ -184,7 +184,7 @@ std::vector<DiffList> generateDiffLists(const std::vector<ILineProvider*>& lineP
 
     for(auto pair: comparisons)
     {
-        printf("Diffing pair of files %d vs %d", pair[0], pair[1]);
+        printf("Diffing pair of files %d vs %d\n", pair[0], pair[1]);
         dls.push_back(diffPair(equivs[pair[0]], equivs[pair[1]], equivMax));
     }
 

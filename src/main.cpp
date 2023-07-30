@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
     }
     catch(cxxopts::exceptions::parsing e)
     {
-        std::cerr << e.what();
+        std::cerr << e.what() << std::endl;
         exit(-1);
     }
 

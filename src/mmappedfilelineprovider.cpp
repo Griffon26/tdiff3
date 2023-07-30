@@ -103,7 +103,7 @@ public:
     {
         assert(from <= mSize);
         assert(to <= mSize);
-        assert(to < from);
+        assert(from < to);
         return std::string_view(static_cast<char *>(mMap) + from, to - from);
     }
 
@@ -147,7 +147,7 @@ void MmappedFileLineProvider::ensure_line_is_available(int index)
 
     //writefln("%s: ensure %d", m_filename, index);
 
-    auto lastpos = (m_lineEnds.size() == 0) ? 0 : m_lineEnds.size() - 1;
+    auto lastpos = (m_lineEnds.size() == 0) ? 0 : m_lineEnds.back();
 
     /* already have indices for all content */
     if(lastpos == m_fileLength)
